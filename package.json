@@ -7,7 +7,7 @@
     "dev:api": "pnpm --filter @flow-studio/api dev",
     "build:web": "pnpm --filter web build",
     "build:api": "pnpm --filter @flow-studio/api build",
-    "lint": "pnpm --filter web lint",
+    "lint": "pnpm --filter web lint && pnpm --filter @flow-studio/api lint",
     "typecheck": "pnpm --filter @flow-studio/api typecheck"
   },
   "devEngines": {
