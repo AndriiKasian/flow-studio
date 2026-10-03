@@ -1,0 +1,21 @@
+{
+  "name": "flow-studio",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "pnpm --filter @flow-studio/api dev",
+    "build:web": "pnpm --filter web build",
+    "build:api": "pnpm --filter @flow-studio/api build",
+    "lint": "pnpm --filter web lint",
+    "typecheck": "pnpm --filter @flow-studio/api typecheck"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.8.1",
+      "onFail": "download"
+    }
+  },
+  "packageManager": "pnpm@12.8.1"
+}
