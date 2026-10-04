@@ -10,9 +10,13 @@ Flow Studio is a visual workflow builder for creating, connecting, executing, an
 - Next.js frontend
 - Express API
 - Shared type-safe contracts between frontend and backend
-- API health endpoint
 - Strict TypeScript configuration
 - ESLint quality checks
+- PostgreSQL persistence
+- Prisma schema and migrations
+- Runtime request validation with Zod
+- Flow creation and retrieval API
+- Backend integration testing
 
 ## Architecture
 
@@ -43,6 +47,9 @@ flow-studio/
 - Node.js
 - Express
 - TypeScript
+- PostgreSQL
+- Prisma ORM
+- Zod
 
 ### Shared
 
@@ -54,6 +61,9 @@ flow-studio/
 - pnpm Workspaces
 - ESLint
 - Claude Code
+- Docker Compose
+- Vitest
+- Supertest
 
 ## Development
 
@@ -61,6 +71,26 @@ flow-studio/
 
 ```bash
 pnpm install
+```
+
+### Database
+
+Start PostgreSQL:
+
+```bash
+docker compose up -d
+```
+
+Apply database migrations:
+
+```bash
+pnpm --filter @flow-studio/api exec prisma migrate dev
+```
+
+Generate Prisma Client:
+
+```bash
+pnpm --filter @flow-studio/api exec prisma generate
 ```
 
 ### Start the frontend
@@ -87,20 +117,6 @@ The API runs at:
 http://localhost:3001
 ```
 
-### API health check
-
-```text
-GET /health
-```
-
-Example response:
-
-```json
-{
-  "status": "ok"
-}
-```
-
 ## Quality Checks
 
 Run frontend linting:
@@ -113,6 +129,12 @@ Run API type checking:
 
 ```bash
 pnpm typecheck
+```
+
+Run API integration tests:
+
+```bash
+pnpm --filter @flow-studio/api test
 ```
 
 Build the frontend:
@@ -133,4 +155,4 @@ Flow Studio is being developed incrementally.
 
 The current foundation includes the frontend application, backend API, shared type-safe contracts, development tooling, and initial code-quality rules.
 
-Architecture, persistence, authentication, workflow execution, real-time monitoring, testing, security, CI/CD, and deployment will be documented as they are implemented.
+Authentication, workflow execution, real-time monitoring, security, CI/CD, and deployment will be documented as they are implemented.

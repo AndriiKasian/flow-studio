@@ -20,6 +20,10 @@ The project is a pnpm monorepo.
 - Fix root causes rather than masking symptoms.
 - Do not modify unrelated code.
 - Do not expose or commit secrets or credentials.
+- Organize backend code by feature rather than by technical layer.
+- Keep HTTP concerns in controllers and database access/business logic in services.
+- Do not add architectural layers unless they solve a concrete problem.
+- Database schema changes must be tracked through Prisma migrations.
 
 ## AI-Assisted Development
 
@@ -49,6 +53,11 @@ Backend:
 - Node.js
 - Express
 - TypeScript
+- PostgreSQL
+- Prisma ORM
+- Zod runtime validation
+- Feature-based modules
+- Route → Controller → Service → Prisma separation
 
 Shared:
 - TypeScript contracts via `@flow-studio/shared`

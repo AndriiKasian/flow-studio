@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: flow-studio-postgres
+    environment:
+      POSTGRES_DB: flow_studio
+      POSTGRES_USER: flow_studio
+      POSTGRES_PASSWORD: flow_studio
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+volumes:
+  postgres_data:
