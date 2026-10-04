@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { createFlowSchema } from "@flow-studio/shared";
-import { createFlow, getFlows } from "./flow.service.js";
+import { createFlowSchema, updateFlowSchema } from "@flow-studio/shared";
+import { createFlow, deleteFlow, getFlowById, getFlows, updateFlow } from "./flow.service.js";
 
 export async function createFlowController(req: Request, res: Response) {
   const result = createFlowSchema.safeParse(req.body);
@@ -13,7 +13,7 @@ export async function createFlowController(req: Request, res: Response) {
     });
   }
 
-  const flow = await createFlow(result.data.name);
+  const flow = await createFlow(result.data);
 
   return res.status(201).json(flow);
 }
@@ -22,4 +22,50 @@ export async function getFlowsController(_req: Request, res: Response) {
   const flows = await getFlows();
 
   return res.status(200).json(flows);
+}
+
+export async function getFlowByIdController(
+  req: Request<{ id: string }>,
+  res: Response,
+) {
+  const { id } = req.params;
+
+  const flow = await getFlowById(id);
+
+  if (!flow) {
+    res.status(404).json({
+      error: "Flow not found",
+    });
+    return;
+  }
+
+  res.status(200).json(flow);
+}
+
+export async function updateFlowController(
+  req: Request<{ id: string }>,
+  res: Response,
+) {
+  const result = updateFlowSchema.safeParse(req.body);
+
+  if (!result.success) {
+    res.status(400).json({
+      error: "Invalid request",
+      details: z.treeifyError(result.error),
+    });
+    return;
+  }
+
+  const flow = await updateFlow(req.params.id, result.data);
+  
+  res.status(200).json(flow);
+}
+
+export async function deleteFlowController(
+  req: Request<{ id: string }>,
+  res: Response,
+) {
+  await deleteFlow(req.params.id);
+
+  res.status(204).send();
 }

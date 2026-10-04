@@ -1,5 +1,1 @@
-export interface HealthResponse {
-    status: "ok";
-  }
-  
-export { createFlowSchema, type CreateFlowInput } from "./flow.js";
+export { createFlowSchema, type CreateFlowInput, updateFlowSchema, type UpdateFlowInput } from "./flow.js";
