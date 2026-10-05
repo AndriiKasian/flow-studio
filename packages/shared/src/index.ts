@@ -1,1 +1,9 @@
-export { createFlowSchema, type CreateFlowInput, updateFlowSchema, type UpdateFlowInput } from "./flow.js";
+export {
+  flowSchema,
+  createFlowSchema,
+  updateFlowSchema,
+  type Flow,
+  type CreateFlowFormInput,
+  type CreateFlowInput,
+  type UpdateFlowInput,
+} from "./flow";
