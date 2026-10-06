@@ -146,6 +146,12 @@ Keep feature-specific UI and behavior inside `features/<feature>`.
 
 Do not move feature-specific logic into global component directories without a concrete reuse case.
 
+Keep Server Components as the default.
+
+Move client boundaries down to the interactive parts of a feature rather than making an entire page or card a Client Component unnecessarily.
+
+Interactive controls such as workflow action menus and React Hook Form dialogs may be Client Components while their surrounding workflow cards remain Server Components.
+
 ### Forms
 
 Use React Hook Form for non-trivial application forms.
@@ -259,9 +265,14 @@ The current API supports:
 The current frontend supports:
 
 - displaying persisted workflows;
-- creating a workflow through a dialog;
-- client-side validation using the shared Zod contract;
-- refreshing the workflow list after creation.
+- creating workflows through a dialog;
+- editing workflow name and description;
+- deleting workflows through a confirmation dialog;
+- client-side form validation using shared Zod contracts;
+- refreshing the workflow list after mutations;
+- ordering workflows by `updatedAt` descending.
+
+The workflows page is dynamically rendered on demand because workflow data is runtime API data and must not be fetched during the Next.js production build.
 
 ## Testing
 
@@ -280,7 +291,10 @@ Current Flow integration coverage includes:
 - successful flow creation;
 - rejection of an empty flow name;
 - normalization of a missing description to `null`;
-- retrieval of a created flow through the flow list endpoint.
+- retrieval of a created flow through the flow list endpoint;
+- flow updates;
+- flow deletion;
+- ordering flows by most recently updated.
 
 Add frontend testing infrastructure when frontend behavior becomes complex enough to justify it; do not introduce a test stack solely for ceremonial coverage.
 
@@ -315,8 +329,9 @@ Current implemented foundation:
 - Prisma;
 - shared Zod/TypeScript contracts;
 - workflow CRUD API;
-- workflows page;
-- create-workflow flow;
+- workflow management dashboard;
+- create, edit, and delete workflow flows;
+- workflow ordering by most recently updated;
 - React Hook Form integration;
 - shadcn/ui foundation;
 - light/dark theme support;

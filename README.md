@@ -6,8 +6,8 @@ Flow Studio is a visual workflow builder for creating, connecting, executing, an
 
 ## Current Features
 
-- Workflow management page
-- Create workflow dialog
+- Workflow management dashboard
+- Create, edit, and delete workflow flows
 - Persistent workflows stored in PostgreSQL
 - Next.js frontend
 - Express API
@@ -143,7 +143,7 @@ Frontend forms use React Hook Form.
 
 Zod schemas from `@flow-studio/shared` are used as the validation contract where frontend and API share the same data shape.
 
-The current create-workflow flow uses the same shared schema for:
+The current workflow forms use shared schemas for:
 
 - frontend form validation;
 - TypeScript input/output types;
@@ -242,13 +242,13 @@ Before considering a feature slice complete, run the relevant tests and the repo
 The current workflow management slice supports:
 
 ```text
-Workflows page
+Workflows dashboard
       ↓
-Create Workflow dialog
+List / Create / Edit / Delete
       ↓
-React Hook Form + shared Zod schema
+React Hook Form + shared Zod schemas
       ↓
-Server action / API client
+Server Actions / API client
       ↓
 Express /flows API
       ↓
@@ -257,20 +257,32 @@ Prisma
 PostgreSQL
 ```
 
-Created workflows are persisted and displayed on the workflows page.
+Workflows are persisted and displayed on the dashboard.
+
+The dashboard supports:
+
+- creating workflows;
+- editing workflow name and description;
+- deleting workflows with confirmation;
+- ordering workflows by `updatedAt` descending so newly created or recently edited workflows appear first.
+
+The workflows page is dynamically rendered on demand because its data comes from the runtime API rather than being fetched during the Next.js production build.
 
 API integration tests currently cover:
 
 - successful flow creation;
 - invalid empty flow names;
 - normalization of a missing description to `null`;
-- retrieval of created flows.
+- retrieval of created flows;
+- updating a flow;
+- deleting a flow;
+- ordering flows by most recently updated.
 
 ## Project Status
 
 Flow Studio is being developed incrementally using vertical slices.
 
-The workflow management foundation is operational: the frontend can retrieve persisted workflows and create new workflows through the Express API.
+The workflow management slice is operational: the frontend can list, create, edit, and delete persisted workflows through the Express API. Recently created or updated workflows are shown first.
 
 The application also has shared contracts, PostgreSQL persistence, Prisma migrations, runtime validation, frontend form handling, light/dark theme support, and backend integration testing.
 

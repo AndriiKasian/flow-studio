@@ -1,4 +1,4 @@
-import type { CreateFlowInput, Flow } from "@flow-studio/shared";
+import type { CreateFlowInput, Flow, UpdateFlowInput } from "@flow-studio/shared";
 
 function getApiUrl(): string {
   const apiUrl = process.env.API_URL;
@@ -34,4 +34,33 @@ export async function createFlow(input: CreateFlowInput): Promise<Flow> {
   }
 
   return response.json() as Promise<Flow>;
+}
+
+export async function updateFlow(
+  id: string,
+  input: UpdateFlowInput,
+): Promise<Flow> {
+  const response = await fetch(`${getApiUrl()}/flows/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to update flow");
+  }
+
+  return response.json() as Promise<Flow>;
+}
+
+export async function deleteFlow(id: string): Promise<void> {
+  const response = await fetch(`${getApiUrl()}/flows/${id}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to delete flow");
+  }
 }

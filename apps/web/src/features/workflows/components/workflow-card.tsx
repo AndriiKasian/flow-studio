@@ -1,15 +1,21 @@
 import type { Flow } from "@flow-studio/shared";
 import { ArrowRight, Workflow } from "lucide-react";
 
+import { WorkflowActions } from "./workflow-actions";
+
 interface WorkflowCardProps {
   flow: Flow;
 }
 
 export function WorkflowCard({ flow }: WorkflowCardProps) {
   return (
-    <article className="group bg-card text-card-foreground hover:border-brand/30 rounded-xl border p-5 transition-all hover:-translate-y-0.5 hover:shadow-md">
-      <div className="from-brand/15 to-brand-secondary/15 text-brand mb-5 flex size-10 items-center justify-center rounded-lg bg-linear-to-br">
-        <Workflow className="size-5" />
+    <article className="group bg-card text-card-foreground hover:border-brand/30 cursor-pointer rounded-xl border p-5 transition-all hover:-translate-y-0.5 hover:shadow-md">
+      <div className="mb-5 flex items-start justify-between">
+        <div className="from-brand/15 to-brand-secondary/15 text-brand flex size-10 items-center justify-center rounded-lg bg-linear-to-br">
+          <Workflow className="size-5" />
+        </div>
+
+        <WorkflowActions flow={flow} />
       </div>
 
       <h2 className="font-semibold tracking-tight">
