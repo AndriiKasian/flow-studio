@@ -3,6 +3,8 @@ import { WorkflowCard } from "@/features/workflows/components/workflow-card";
 import { CreateWorkflowDialog } from "@/features/workflows/components/create-workflow-dialog";
 import { getFlows } from "@/lib/flows-api";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const flows = await getFlows();
 
