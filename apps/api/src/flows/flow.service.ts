@@ -1,5 +1,6 @@
-import { prisma } from "../lib/prisma.js";
 import type { CreateFlowInput, UpdateFlowInput } from "@flow-studio/shared";
+
+import { prisma } from "../lib/prisma.js";
 
 export function createFlow(data: CreateFlowInput) {
   return prisma.flow.create({
@@ -8,7 +9,11 @@ export function createFlow(data: CreateFlowInput) {
 }
 
 export function getFlows() {
-  return prisma.flow.findMany();
+  return prisma.flow.findMany({
+    orderBy: {
+      updatedAt: "desc",
+    },
+  });
 }
 
 export function getFlowById(id: string) {
