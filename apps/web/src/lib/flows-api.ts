@@ -1,13 +1,17 @@
 import type { CreateFlowInput, Flow } from "@flow-studio/shared";
 
-const API_URL = process.env.API_URL;
+function getApiUrl(): string {
+  const apiUrl = process.env.API_URL;
 
-if (!API_URL) {
-  throw new Error("API_URL is not configured");
+  if (!apiUrl) {
+    throw new Error("API_URL is not configured");
+  }
+
+  return apiUrl;
 }
 
 export async function getFlows(): Promise<Flow[]> {
-  const response = await fetch(`${API_URL}/flows`);
+  const response = await fetch(`${getApiUrl()}/flows`);
 
   if (!response.ok) {
     throw new Error("Failed to fetch flows");
@@ -17,7 +21,7 @@ export async function getFlows(): Promise<Flow[]> {
 }
 
 export async function createFlow(input: CreateFlowInput): Promise<Flow> {
-  const response = await fetch(`${API_URL}/flows`, {
+  const response = await fetch(`${getApiUrl()}/flows`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
