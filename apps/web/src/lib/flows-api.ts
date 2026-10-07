@@ -20,6 +20,20 @@ export async function getFlows(): Promise<Flow[]> {
   return response.json() as Promise<Flow[]>;
 }
 
+export async function getFlow(id: string): Promise<Flow | null> {
+  const response = await fetch(`${getApiUrl()}/flows/${id}`);
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch flow");
+  }
+
+  return response.json() as Promise<Flow>;
+}
+
 export async function createFlow(input: CreateFlowInput): Promise<Flow> {
   const response = await fetch(`${getApiUrl()}/flows`, {
     method: "POST",
