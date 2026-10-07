@@ -119,6 +119,7 @@ Avoid chains of speculative configuration changes. Determine the root cause firs
 - React Hook Form
 - Zod
 - next-themes
+- React Flow (`@xyflow/react`)
 
 Frontend code is organized primarily around application features.
 
@@ -151,6 +152,10 @@ Keep Server Components as the default.
 Move client boundaries down to the interactive parts of a feature rather than making an entire page or card a Client Component unnecessarily.
 
 Interactive controls such as workflow action menus and React Hook Form dialogs may be Client Components while their surrounding workflow cards remain Server Components.
+
+The Flow Editor page and its non-interactive shell should remain Server Components.
+
+The React Flow canvas is a focused Client Component boundary because canvas interaction requires client-side state and browser interaction.
 
 ### Forms
 
@@ -187,6 +192,10 @@ Use theme tokens and CSS variables rather than hardcoded one-theme colors.
 New components must work coherently in both light and dark themes.
 
 The approved visual references guide styling, but theme support remains first-class.
+
+React Flow must follow the application's resolved `next-themes` theme rather than independently following the operating-system theme.
+
+The application may initially follow the system theme, while manual light/dark selection remains supported.
 
 ### Backend
 
@@ -270,9 +279,22 @@ The current frontend supports:
 - deleting workflows through a confirmation dialog;
 - client-side form validation using shared Zod contracts;
 - refreshing the workflow list after mutations;
-- ordering workflows by `updatedAt` descending.
+- ordering workflows by `updatedAt` descending;
+- opening persisted workflows in the Flow Editor.
 
-The workflows page is dynamically rendered on demand because workflow data is runtime API data and must not be fetched during the Next.js production build.
+The current Flow Editor foundation supports:
+
+- dynamic `/workflows/[id]` routing;
+- loading workflow metadata through `GET /flows/:id`;
+- not-found handling for missing workflows;
+- a full-screen editor shell;
+- a node-library sidebar foundation;
+- an interactive React Flow canvas;
+- pan and zoom;
+- canvas background and controls;
+- synchronized light/dark theme behavior.
+
+The workflows dashboard and editor route are dynamically rendered on demand because workflow data is runtime API data and must not be fetched during the Next.js production build.
 
 ## Testing
 
@@ -284,7 +306,7 @@ Backend API behavior is tested with Vitest and Supertest.
 
 Integration tests belong next to the corresponding backend feature.
 
-Test source files must not be emitted into the API production build.
+Test source files may be part of the TypeScript project for type checking and linting, but API test execution must be scoped to source test files so compiled test artifacts are not executed a second time.
 
 Current Flow integration coverage includes:
 
@@ -332,6 +354,12 @@ Current implemented foundation:
 - workflow management dashboard;
 - create, edit, and delete workflow flows;
 - workflow ordering by most recently updated;
+- dynamic workflow editor route;
+- workflow loading by ID;
+- full-screen Flow Editor shell;
+- React Flow canvas;
+- canvas pan, zoom, background, and controls;
+- React Flow light/dark theme integration;
 - React Hook Form integration;
 - shadcn/ui foundation;
 - light/dark theme support;
@@ -339,13 +367,15 @@ Current implemented foundation:
 
 Planned functionality includes:
 
-- visual Flow Editor / Canvas;
-- React Flow;
 - workflow nodes;
 - Input / AI / Transform / Output node types for V1;
-- workflow persistence beyond basic metadata;
-- execution engine;
+- node handles and connections;
+- drag-and-drop node creation;
+- node and edge persistence;
+- workflow execution engine;
 - SSE execution updates;
+- live Execution Monitor;
+- execution-aware node and edge visualization;
 - authentication with email and Google;
 - CI/CD;
 - deployment.
@@ -354,30 +384,72 @@ Planned technologies or features must not be treated as already implemented.
 
 ## Flow Editor Direction
 
-Before implementing the new Flow Editor / Canvas, inspect the corresponding old AI-Prompt-Chain implementation, including where relevant:
+The old AI-Prompt-Chain Flow Editor has been inspected as a functional reference.
 
-- flow canvas/features;
-- nodes;
-- node components;
-- NodeFactory;
-- NodeWrapper;
-- field components;
-- handles;
-- drag-and-drop;
-- connection behavior.
+Useful concepts from the old implementation may be adapted, including:
 
-Do not assume the old structure should be reproduced.
+- React Flow canvas behavior;
+- node-library sidebar;
+- drag-and-drop node creation;
+- `screenToFlowPosition()`-style coordinate conversion;
+- node and edge state;
+- connection through handles;
+- persisting node position after drag completion rather than on every movement;
+- declarative node definitions;
+- a shared visual node wrapper;
+- field renderers;
+- typed handles;
+- canvas background and controls.
 
-Use it to understand proven behavior and then decide what belongs in the new architecture.
+Do not blindly port the old architecture.
+
+In particular, do not recreate legacy indirection such as a large global props provider or redundant wrapper layers unless the new application develops a concrete need for them.
 
 The V1 node set is intentionally limited to:
 
-- Input
-- AI
-- Transform
-- Output
+- Input;
+- AI;
+- Transform;
+- Output.
 
 Avoid expanding the node model prematurely.
+
+### Execution Visualization Direction
+
+Workflow execution should be represented directly on the canvas using real execution state rather than decorative mock animation.
+
+Planned execution states:
+
+- `idle` — normal node and edge appearance;
+- `running` — active node uses a brand-colored glow/pulse;
+- `completed` — completed node uses a success accent/check;
+- `failed` — failed node uses a destructive/error accent;
+- `skipped` — skipped node is visually muted.
+
+The edge currently carrying execution should be visually distinguishable and animated so execution can be followed through the graph.
+
+Execution visualization should be driven by real backend SSE events such as:
+
+```text
+node:start
+node:delta
+node:stop
+```
+
+Those events should feed shared frontend execution state that drives:
+
+```text
+SSE
+ ↓
+Frontend execution state
+ ├── canvas node state
+ ├── active edge state
+ └── Execution Monitor live logs
+```
+
+Execution effects should be polished in both themes, with particular attention to glow, motion, and contrast in dark mode.
+
+Keep execution visualization functional and state-driven. Do not add fake execution animation that is disconnected from backend execution state.
 
 ## Commands
 

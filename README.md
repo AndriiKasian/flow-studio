@@ -7,6 +7,9 @@ Flow Studio is a visual workflow builder for creating, connecting, executing, an
 ## Current Features
 
 - Workflow management dashboard
+- Visual workflow editor foundation
+- Dynamic workflow editor route (`/workflows/[id]`)
+- React Flow canvas with pan, zoom, background, and controls
 - Create, edit, and delete workflow flows
 - Persistent workflows stored in PostgreSQL
 - Next.js frontend
@@ -76,6 +79,7 @@ Execution features will additionally include the execution engine and SSE commun
 - React Hook Form
 - Zod
 - next-themes
+- React Flow (`@xyflow/react`)
 
 ### Backend
 
@@ -136,6 +140,8 @@ Flow Studio supports both light and dark themes.
 Theme-aware components should use semantic theme tokens and CSS variables instead of hardcoded light- or dark-theme colors.
 
 Both themes are treated as first-class product functionality.
+
+The React Flow canvas follows the resolved application theme so system theme selection and manual light/dark switching remain synchronized across the editor.
 
 ## Forms and Validation
 
@@ -239,13 +245,25 @@ Before considering a feature slice complete, run the relevant tests and the repo
 
 ## Current Workflow Slice
 
-The current workflow management slice supports:
+The current workflow slice supports:
 
 ```text
 Workflows dashboard
       ↓
 List / Create / Edit / Delete
       ↓
+Open workflow
+      ↓
+/workflows/[id]
+      ↓
+Flow Editor shell
+      ↓
+React Flow canvas
+```
+
+Workflow metadata is persisted through:
+
+```text
 React Hook Form + shared Zod schemas
       ↓
 Server Actions / API client
@@ -257,16 +275,29 @@ Prisma
 PostgreSQL
 ```
 
-Workflows are persisted and displayed on the dashboard.
-
 The dashboard supports:
 
 - creating workflows;
 - editing workflow name and description;
 - deleting workflows with confirmation;
+- opening a persisted workflow in the Flow Editor;
 - ordering workflows by `updatedAt` descending so newly created or recently edited workflows appear first.
 
-The workflows page is dynamically rendered on demand because its data comes from the runtime API rather than being fetched during the Next.js production build.
+The Flow Editor currently provides:
+
+- dynamic routing by workflow ID;
+- server-side loading of workflow metadata through `GET /flows/:id`;
+- not-found handling for missing workflows;
+- a full-screen editor shell;
+- editor header and node-library sidebar foundation;
+- an interactive React Flow canvas;
+- pan and zoom;
+- canvas background and controls;
+- light and dark theme integration.
+
+The Flow Editor keeps the Next.js page and non-interactive editor shell server-rendered while isolating React Flow behind a client-component boundary.
+
+The workflows dashboard and editor route are dynamically rendered on demand because their data comes from the runtime API rather than being fetched during the Next.js production build.
 
 API integration tests currently cover:
 
@@ -282,8 +313,10 @@ API integration tests currently cover:
 
 Flow Studio is being developed incrementally using vertical slices.
 
-The workflow management slice is operational: the frontend can list, create, edit, and delete persisted workflows through the Express API. Recently created or updated workflows are shown first.
+The workflow management slice is operational: the frontend can list, create, edit, delete, and open persisted workflows through the Express API.
 
-The application also has shared contracts, PostgreSQL persistence, Prisma migrations, runtime validation, frontend form handling, light/dark theme support, and backend integration testing.
+The initial Flow Editor foundation is operational. Individual workflows can be opened through `/workflows/[id]` and displayed inside a full-screen editor containing a node-library sidebar and interactive React Flow canvas.
 
-The visual Flow Editor, workflow nodes, workflow execution engine, SSE execution updates, authentication, CI/CD, and deployment will be documented as they are implemented.
+The canvas currently supports navigation interactions such as pan and zoom, along with background and controls. Both light and dark themes are supported throughout the editor.
+
+Workflow nodes, node/edge persistence, workflow execution, SSE execution updates, authentication, and deployment will be documented as they are implemented.
