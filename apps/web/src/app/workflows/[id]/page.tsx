@@ -24,7 +24,7 @@ export default async function WorkflowPage({
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    <div className="workflow-editor flex h-screen flex-col overflow-hidden">
       <WorkflowEditorHeader flow={flow} />
 
       <div className="flex min-h-0 flex-1">
