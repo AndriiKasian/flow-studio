@@ -1,35 +1,86 @@
+
 "use client";
 
 import {
   Background,
   BackgroundVariant,
+  ConnectionLineType,
   Controls,
   ReactFlow,
-  type ColorMode,
+  ReactFlowProvider,
 } from "@xyflow/react";
+
 import "@xyflow/react/dist/style.css";
-import { useTheme } from "next-themes";
+import "../styles/workflow-canvas.css";
 
-export function WorkflowCanvas() {
-  const { resolvedTheme } = useTheme();
+import {
+  CANVAS_BACKGROUND,
+  edgeTypes,
+  nodeTypes,
+} from "../lib/workflow-canvas-config";
 
-  const colorMode: ColorMode =
-    resolvedTheme === "dark" ? "dark" : "light";
+import { useWorkflowCanvas } from "../hooks/use-workflow-canvas";
+import { ConnectionErrorAlert } from "./connection-error-alert";
+
+function WorkflowCanvasContent() {
+  const {
+    nodes,
+    edges,
+    onNodesChange,
+    onEdgesChange,
+    onDragOver,
+    onDrop,
+    onConnect,
+    onConnectStart,
+    onConnectEnd,
+    isValidConnection,
+    connectionError,
+    dismissConnectionError,
+  } = useWorkflowCanvas();
 
   return (
-    <ReactFlow
-      nodes={[]}
-      edges={[]}
-      colorMode={colorMode}
-      fitView
-    >
-      <Background
-        variant={BackgroundVariant.Dots}
-        gap={20}
-        size={1}
-      />
+    <div className="relative h-full w-full">
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        onConnect={onConnect}
+        onConnectStart={onConnectStart}
+        onConnectEnd={onConnectEnd}
+        isValidConnection={isValidConnection}
+        connectionLineType={ConnectionLineType.Bezier}
+        defaultEdgeOptions={{
+          type: "workflow",
+        }}
+        deleteKeyCode={["Backspace", "Delete"]}
+        fitView
+      >
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={CANVAS_BACKGROUND.gap}
+          size={CANVAS_BACKGROUND.dotSize}
+        />
 
-      <Controls />
-    </ReactFlow>
+        <Controls />
+      </ReactFlow>
+
+      <ConnectionErrorAlert
+        error={connectionError}
+        onDismiss={dismissConnectionError}
+      />
+    </div>
+  );
+}
+
+export function WorkflowCanvas() {
+  return (
+    <ReactFlowProvider>
+      <WorkflowCanvasContent />
+    </ReactFlowProvider>
   );
 }

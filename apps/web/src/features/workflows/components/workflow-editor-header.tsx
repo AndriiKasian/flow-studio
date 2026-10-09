@@ -1,7 +1,8 @@
 import type { Flow } from "@flow-studio/shared";
-import { ArrowLeft, Workflow } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
+import { FlowStudioLogo } from "@/components/ui/flow-studio-logo";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 interface WorkflowEditorHeaderProps {
@@ -22,9 +23,7 @@ export function WorkflowEditorHeader({
           <ArrowLeft className="size-5" />
         </Link>
 
-        <div className="from-brand to-brand-secondary text-brand-foreground flex size-8 items-center justify-center rounded-lg bg-linear-to-br">
-          <Workflow className="size-4" />
-        </div>
+        <FlowStudioLogo size={32} />
 
         <span className="font-semibold tracking-tight">
           AI Flow Studio
@@ -33,9 +32,7 @@ export function WorkflowEditorHeader({
 
       <div className="flex min-w-0 flex-1 items-center justify-between px-5">
         <div className="min-w-0">
-          <p className="truncate font-medium">
-            {flow.name}
-          </p>
+          <p className="truncate font-medium">{flow.name}</p>
 
           <p className="text-muted-foreground text-xs">
             Workflow editor
