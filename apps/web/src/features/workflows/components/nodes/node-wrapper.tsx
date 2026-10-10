@@ -24,7 +24,7 @@ export function NodeWrapper({
       className="workflow-node relative w-72 rounded-xl border text-card-foreground"
     >
       <div className="flex items-center gap-3 border-b border-border/60 px-4 py-3">
-        <div className="workflow-node-icon flex size-9 items-center justify-center rounded-lg">
+        <div className="workflow-node-icon flex size-9 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--node-color)_12%,transparent)] text-[var(--node-color)]">
           <Icon className="size-4" />
         </div>
 

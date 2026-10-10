@@ -7,9 +7,8 @@ import {
   ConnectionLineType,
   Controls,
   ReactFlow,
-  ReactFlowProvider,
 } from "@xyflow/react";
-
+import type { WorkflowGraph } from "@flow-studio/shared";
 import "@xyflow/react/dist/style.css";
 import "../styles/workflow-canvas.css";
 
@@ -22,7 +21,11 @@ import {
 import { useWorkflowCanvas } from "../hooks/use-workflow-canvas";
 import { ConnectionErrorAlert } from "./connection-error-alert";
 
-function WorkflowCanvasContent() {
+interface WorkflowCanvasProps {
+  initialGraph: WorkflowGraph | null;
+}
+
+export function WorkflowCanvas({ initialGraph } : WorkflowCanvasProps) {
   const {
     nodes,
     edges,
@@ -36,7 +39,7 @@ function WorkflowCanvasContent() {
     isValidConnection,
     connectionError,
     dismissConnectionError,
-  } = useWorkflowCanvas();
+  } = useWorkflowCanvas(initialGraph);
 
   return (
     <div className="relative h-full w-full">
@@ -54,6 +57,7 @@ function WorkflowCanvasContent() {
         onConnectEnd={onConnectEnd}
         isValidConnection={isValidConnection}
         connectionLineType={ConnectionLineType.Bezier}
+        proOptions={{ hideAttribution: true }}
         defaultEdgeOptions={{
           type: "workflow",
         }}
@@ -74,13 +78,5 @@ function WorkflowCanvasContent() {
         onDismiss={dismissConnectionError}
       />
     </div>
-  );
-}
-
-export function WorkflowCanvas() {
-  return (
-    <ReactFlowProvider>
-      <WorkflowCanvasContent />
-    </ReactFlowProvider>
   );
 }
