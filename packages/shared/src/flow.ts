@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { workflowGraphSchema } from "./workflow-graph";
 
 export const createFlowSchema = z.object({
   name: z.string().trim().min(1).max(100),
@@ -22,6 +23,7 @@ export const flowSchema = z.object({
   description: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  graph: workflowGraphSchema.nullable(),
 });
 
 export type Flow = z.infer<typeof flowSchema>;

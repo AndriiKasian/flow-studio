@@ -13,7 +13,7 @@ export function ThemeToggle() {
       <Button
         variant="ghost"
         size="icon"
-        className="dark:hidden"
+        className="dark:hidden cursor-pointer disabled:cursor-not-allowed"
         onClick={() => setTheme("dark")}
         aria-label="Switch to dark theme"
       >
@@ -23,7 +23,7 @@ export function ThemeToggle() {
       <Button
         variant="ghost"
         size="icon"
-        className="hidden dark:inline-flex"
+        className="hidden dark:inline-flex cursor-pointer disabled:cursor-not-allowed"
         onClick={() => setTheme("light")}
         aria-label="Switch to light theme"
       >

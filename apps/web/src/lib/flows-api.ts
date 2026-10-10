@@ -1,4 +1,4 @@
-import type { CreateFlowInput, Flow, UpdateFlowInput } from "@flow-studio/shared";
+import type { CreateFlowInput, Flow, UpdateFlowInput, WorkflowGraph } from "@flow-studio/shared";
 
 function getApiUrl(): string {
   const apiUrl = process.env.API_URL;
@@ -76,5 +76,22 @@ export async function deleteFlow(id: string): Promise<void> {
 
   if (!response.ok) {
     throw new Error("Failed to delete flow");
+  }
+}
+
+export async function saveFlowGraph(
+  id: string,
+  graph: WorkflowGraph,
+): Promise<void> {
+  const response = await fetch(`${getApiUrl()}/flows/${id}/graph`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(graph),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to save workflow graph");
   }
 }

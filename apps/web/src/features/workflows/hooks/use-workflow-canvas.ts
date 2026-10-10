@@ -3,7 +3,6 @@
 
 import {
   useCallback,
-  useEffect,
   useRef,
   useState,
   type DragEvent,
@@ -19,7 +18,7 @@ import {
   type OnConnectEnd,
   type Node,
 } from "@xyflow/react";
-
+import type { WorkflowGraph } from "@flow-studio/shared";
 import { NODE_DEFINITIONS } from "../lib/node-definitions";
 
 import {
@@ -37,35 +36,23 @@ import {
 
 import type { WorkflowEdgeType } from "../components/edges/workflow-edge";
 
-const ALERT_MESSAGE_TIMER = 10000;
-
-export function useWorkflowCanvas() {
+export function useWorkflowCanvas(
+  initialGraph: WorkflowGraph | null,
+) {
   const [nodes, setNodes, onNodesChange] =
-    useNodesState<Node>(initialNodes);
+    useNodesState<Node>(initialGraph?.nodes ?? initialNodes);
 
   const [edges, setEdges, onEdgesChange] =
-    useEdgesState<WorkflowEdgeType>(initialEdges);
+    useEdgesState<WorkflowEdgeType>(
+      initialGraph?.edges ?? initialEdges,
+    );
 
   const [connectionError, setConnectionError] =
     useState<ConnectionError | null>(null);
 
-  const [errorVersion, setErrorVersion] = useState(0);
-
   const lastInvalidConnection = useRef<ConnectionError | null>(null);
 
   const { screenToFlowPosition } = useReactFlow();
-
-  useEffect(() => {
-    if (!connectionError) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setConnectionError(null);
-    }, ALERT_MESSAGE_TIMER);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [connectionError, errorVersion]);
 
   const onDragOver = useCallback(
     (event: DragEvent<HTMLDivElement>) => {
@@ -173,7 +160,6 @@ export function useWorkflowCanvas() {
 
       if (error) {
         setConnectionError(error);
-        setErrorVersion((version) => version + 1);
       }
 
       lastInvalidConnection.current = null;
