@@ -122,3 +122,47 @@ export function validateWorkflowConnection(
 
   return hasPathToSource(target) ? "cycle" : null;
 }
+
+export function validateImportedWorkflowGraph(
+  nodes: Node[],
+  edges: Edge[],
+): ConnectionError | "duplicate" | null {
+  const nodeIds = new Set<string>();
+
+  for (const node of nodes) {
+    if (nodeIds.has(node.id)) {
+      return "duplicate";
+    }
+
+    nodeIds.add(node.id);
+
+    if (!node.type || !isWorkflowNodeType(node.type)) {
+      return "invalid";
+    }
+  }
+
+  const validatedEdges: Edge[] = [];
+  const edgeIds = new Set<string>();
+
+  for (const edge of edges) {
+    if (edgeIds.has(edge.id)) {
+      return "duplicate";
+    }
+
+    edgeIds.add(edge.id);
+
+    const error = validateWorkflowConnection(
+      edge,
+      nodes,
+      validatedEdges,
+    );
+
+    if (error) {
+      return error;
+    }
+
+    validatedEdges.push(edge);
+  }
+
+  return null;
+}

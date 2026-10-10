@@ -1,13 +1,29 @@
+
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState, type ChangeEvent } from "react";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import {
   workflowGraphSchema,
   type Flow,
+  type WorkflowGraph,
 } from "@flow-studio/shared";
 
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
 import { saveWorkflowGraph } from "../actions/save-workflow-graph";
+import {
+  exportWorkflowToFile,
+  importWorkflowFromFile,
+} from "../lib/workflow-file";
 
 import { WorkflowCanvas } from "./workflow-canvas";
 import { WorkflowEditorHeader } from "./workflow-editor-header";
@@ -19,22 +35,28 @@ interface WorkflowEditorProps {
 }
 
 function WorkflowEditorContent({ flow }: WorkflowEditorProps) {
-  const { getNodes, getEdges } = useReactFlow();
+  const { getNodes, getEdges, setNodes, setEdges, fitView } =
+    useReactFlow();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isSaving, setIsSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
-  const [saveVariant, setSaveVariant] = useState<"success" | "error">(
-    "success",
-  );
+  const [message, setMessage] = useState<string | null>(null);
+  const [messageVariant, setMessageVariant] = useState<
+    "success" | "error"
+  >("success");
 
-  const dismissSaveMessage = useCallback(() => {
-    setSaveMessage(null);
+  const [pendingImport, setPendingImport] =
+    useState<WorkflowGraph | null>(null);
+
+  const dismissMessage = useCallback(() => {
+    setMessage(null);
   }, []);
 
   const handleSave = async () => {
     if (isSaving) return;
 
-    setSaveMessage(null);
+    setMessage(null);
 
     const result = workflowGraphSchema.safeParse({
       nodes: getNodes(),
@@ -42,8 +64,8 @@ function WorkflowEditorContent({ flow }: WorkflowEditorProps) {
     });
 
     if (!result.success) {
-      setSaveVariant("error");
-      setSaveMessage("Invalid workflow graph");
+      setMessageVariant("error");
+      setMessage("Invalid workflow graph");
       return;
     }
 
@@ -53,19 +75,79 @@ function WorkflowEditorContent({ flow }: WorkflowEditorProps) {
       const response = await saveWorkflowGraph(flow.id, result.data);
 
       if (!response.success) {
-        setSaveVariant("error");
-        setSaveMessage(response.error);
+        setMessageVariant("error");
+        setMessage(response.error);
         return;
       }
 
-      setSaveVariant("success");
-      setSaveMessage("Workflow saved successfully");
+      setMessageVariant("success");
+      setMessage("Workflow saved successfully");
     } catch {
-      setSaveVariant("error");
-      setSaveMessage("Failed to save workflow");
+      setMessageVariant("error");
+      setMessage("Failed to save workflow");
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleExport = () => {
+    const result = workflowGraphSchema.safeParse({
+      nodes: getNodes(),
+      edges: getEdges(),
+    });
+
+    if (!result.success) {
+      setMessageVariant("error");
+      setMessage("Cannot export an invalid workflow graph");
+      return;
+    }
+
+    exportWorkflowToFile(result.data, `workflow-${flow.id}.json`);
+  };
+
+  const handleImport = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportFileChange = async (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+
+    event.target.value = "";
+
+    if (!file) return;
+
+    setMessage(null);
+
+    try {
+      const graph = await importWorkflowFromFile(file);
+      setPendingImport(graph);
+    } catch (error) {
+      setMessageVariant("error");
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Failed to import workflow",
+      );
+    }
+  };
+
+  const handleConfirmImport = () => {
+    if (!pendingImport) return;
+
+    setNodes(pendingImport.nodes);
+    setEdges(pendingImport.edges);
+    setPendingImport(null);
+
+    requestAnimationFrame(() => {
+      void fitView({ padding: 0.2, duration: 300 });
+    });
+
+    setMessageVariant("success");
+    setMessage(
+      "Workflow imported successfully. Click Save to persist.",
+    );
   };
 
   return (
@@ -73,7 +155,18 @@ function WorkflowEditorContent({ flow }: WorkflowEditorProps) {
       <WorkflowEditorHeader
         flow={flow}
         onSave={handleSave}
+        onExport={handleExport}
+        onImport={handleImport}
         isSaving={isSaving}
+      />
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json,application/json"
+        className="hidden"
+        aria-label="Import workflow JSON"
+        onChange={handleImportFileChange}
       />
 
       <div className="flex min-h-0 flex-1">
@@ -84,10 +177,48 @@ function WorkflowEditorContent({ flow }: WorkflowEditorProps) {
         </main>
       </div>
 
+      <Dialog
+        open={pendingImport !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingImport(null);
+          }
+        }}
+      >
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Replace current workflow?</DialogTitle>
+            <DialogDescription>
+              Importing this file will replace all nodes and
+              connections on the canvas. Unsaved changes will be lost.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPendingImport(null)}
+              className="cursor-pointer"
+            >
+              Cancel
+            </Button>
+
+            <Button
+              type="button"
+              onClick={handleConfirmImport}
+              className="cursor-pointer"
+            >
+              Import workflow
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <WorkflowToast
-        message={saveMessage}
-        variant={saveVariant}
-        onDismiss={dismissSaveMessage}
+        message={message}
+        variant={messageVariant}
+        onDismiss={dismissMessage}
       />
     </div>
   );
