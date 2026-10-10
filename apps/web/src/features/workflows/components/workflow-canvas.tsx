@@ -57,7 +57,6 @@ export function WorkflowCanvas({ initialGraph } : WorkflowCanvasProps) {
         onConnectEnd={onConnectEnd}
         isValidConnection={isValidConnection}
         connectionLineType={ConnectionLineType.Bezier}
-        proOptions={{ hideAttribution: true }}
         defaultEdgeOptions={{
           type: "workflow",
         }}
