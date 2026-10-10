@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,10 +21,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { updateWorkflow } from "@/features/workflows/actions/update-workflow";
 
+import { WorkflowFormFields } from "./workflow-form-fields";
 interface EditWorkflowDialogProps {
   flow: Flow;
   open: boolean;
@@ -84,55 +84,11 @@ export function EditWorkflowDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-5 py-6">
-            <div className="grid gap-2">
-              <label
-                htmlFor={`workflow-name-${flow.id}`}
-                className="text-sm font-medium"
-              >
-                Name
-              </label>
-
-              <Input
-                id={`workflow-name-${flow.id}`}
-                aria-invalid={Boolean(errors.name)}
-                {...register("name")}
-              />
-
-              {errors.name?.message && (
-                <p className="text-destructive text-sm">
-                  {errors.name.message}
-                </p>
-              )}
-            </div>
-
-            <div className="grid gap-2">
-              <label
-                htmlFor={`workflow-description-${flow.id}`}
-                className="text-sm font-medium"
-              >
-                Description
-              </label>
-
-              <Textarea
-                id={`workflow-description-${flow.id}`}
-                aria-invalid={Boolean(errors.description)}
-                {...register("description")}
-              />
-
-              {errors.description?.message && (
-                <p className="text-destructive text-sm">
-                  {errors.description.message}
-                </p>
-              )}
-            </div>
-
-            {errors.root?.message && (
-              <p className="text-destructive text-sm">
-                {errors.root.message}
-              </p>
-            )}
-          </div>
+          <WorkflowFormFields
+            idPrefix={`workflow-${flow.id}`}
+            register={register}
+            errors={errors}
+          />
 
           <DialogFooter>
             <DialogClose

@@ -1,7 +1,11 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { createFlowSchema, updateFlowSchema } from "@flow-studio/shared";
-import { createFlow, deleteFlow, getFlowById, getFlows, updateFlow } from "./flow.service.js";
+import {
+  createFlowSchema,
+  updateFlowSchema,
+  workflowGraphSchema,
+} from "@flow-studio/shared";
+import { createFlow, deleteFlow, getFlowById, getFlows, updateFlow, saveFlowGraph } from "./flow.service.js";
 
 export async function createFlowController(req: Request, res: Response) {
   const result = createFlowSchema.safeParse(req.body);
@@ -68,4 +72,24 @@ export async function deleteFlowController(
   await deleteFlow(req.params.id);
 
   res.status(204).send();
+}
+
+export async function saveFlowGraphController(
+  req: Request<{ id: string }>,
+  res: Response,
+) {
+  const body: unknown = req.body;
+  const result = workflowGraphSchema.safeParse(body);
+
+  if (!result.success) {
+    res.status(400).json({
+      error: "Invalid workflow graph",
+      details: z.treeifyError(result.error),
+    });
+    return;
+  }
+
+  const flow = await saveFlowGraph(req.params.id, result.data);
+
+  res.json(flow);
 }

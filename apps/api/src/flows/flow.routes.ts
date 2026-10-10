@@ -4,6 +4,7 @@ import {
   deleteFlowController,
   getFlowByIdController,
   getFlowsController,
+  saveFlowGraphController,
   updateFlowController,
 } from "./flow.controller.js";
 
@@ -13,4 +14,5 @@ flowRouter.post("/", createFlowController);
 flowRouter.get("/", getFlowsController);
 flowRouter.get("/:id", getFlowByIdController);
 flowRouter.patch("/:id", updateFlowController);
+flowRouter.put("/:id/graph", saveFlowGraphController);
 flowRouter.delete("/:id", deleteFlowController);

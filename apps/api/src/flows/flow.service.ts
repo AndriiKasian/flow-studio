@@ -1,5 +1,9 @@
-import type { CreateFlowInput, UpdateFlowInput } from "@flow-studio/shared";
 
+import type {
+  CreateFlowInput,
+  UpdateFlowInput,
+  WorkflowGraph,
+} from "@flow-studio/shared";
 import { prisma } from "../lib/prisma.js";
 
 export function createFlow(data: CreateFlowInput) {
@@ -32,5 +36,14 @@ export function updateFlow(id: string, data: UpdateFlowInput) {
 export function deleteFlow(id: string) {
   return prisma.flow.delete({
     where: { id },
+  });
+}
+
+export function saveFlowGraph(id: string, graph: WorkflowGraph) {
+  return prisma.flow.update({
+    where: { id },
+    data: {
+      graph,
+    },
   });
 }
