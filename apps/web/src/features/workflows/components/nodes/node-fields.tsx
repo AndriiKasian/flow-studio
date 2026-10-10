@@ -33,11 +33,23 @@ export function NodeField({
   const { updateNodeData } = useReactFlow();
 
   const updateValue = (nextValue: string) => {
-    updateNodeData(nodeId, {
-      [name]: type === "number" && nextValue !== ""
-        ? Number(nextValue)
-        : nextValue,
-    });
+    if (type === "number") {
+      if (nextValue === "") {
+        updateNodeData(nodeId, { [name]: undefined });
+        return;
+      }
+
+      const numericValue = Number(nextValue);
+
+      if (!Number.isFinite(numericValue)) {
+        return;
+      }
+
+      updateNodeData(nodeId, { [name]: numericValue });
+      return;
+    }
+
+    updateNodeData(nodeId, { [name]: nextValue });
   };
 
   const commonProps = {

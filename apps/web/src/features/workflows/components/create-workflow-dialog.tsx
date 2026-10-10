@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,9 +22,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { createWorkflow } from "@/features/workflows/actions/create-workflow";
+
+import { WorkflowFormFields } from "./workflow-form-fields";
 
 export function CreateWorkflowDialog() {
   const [open, setOpen] = useState(false);
@@ -57,13 +58,13 @@ export function CreateWorkflowDialog() {
     setOpen(false);
   });
 
-  function handleOpenChange(nextOpen: boolean) {
+  const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
 
     if (!nextOpen) {
       reset();
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -87,57 +88,12 @@ export function CreateWorkflowDialog() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-5 py-6">
-            <div className="grid gap-2">
-              <label
-                htmlFor="workflow-name"
-                className="text-sm font-medium"
-              >
-                Name
-              </label>
-
-              <Input
-                id="workflow-name"
-                placeholder="Customer support workflow"
-                aria-invalid={Boolean(errors.name)}
-                {...register("name")}
-              />
-
-              {errors.name?.message && (
-                <p className="text-destructive text-sm">
-                  {errors.name.message}
-                </p>
-              )}
-            </div>
-
-            <div className="grid gap-2">
-              <label
-                htmlFor="workflow-description"
-                className="text-sm font-medium"
-              >
-                Description
-              </label>
-
-              <Textarea
-                id="workflow-description"
-                placeholder="What does this workflow do?"
-                aria-invalid={Boolean(errors.description)}
-                {...register("description")}
-              />
-
-              {errors.description?.message && (
-                <p className="text-destructive text-sm">
-                  {errors.description.message}
-                </p>
-              )}
-            </div>
-
-            {errors.root?.message && (
-              <p className="text-destructive text-sm">
-                {errors.root.message}
-              </p>
-            )}
-          </div>
+          <WorkflowFormFields
+            idPrefix="workflow"
+            register={register}
+            errors={errors}
+            showPlaceholders
+          />
 
           <DialogFooter>
             <DialogClose

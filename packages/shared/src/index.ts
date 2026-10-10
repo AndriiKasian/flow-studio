@@ -7,3 +7,11 @@ export {
   type CreateFlowInput,
   type UpdateFlowInput,
 } from "./flow";
+
+export {
+  workflowGraphSchema,
+  workflowNodeSchema,
+  workflowEdgeSchema,
+  workflowNodeTypeSchema,
+  type WorkflowGraph,
+} from "./workflow-graph";

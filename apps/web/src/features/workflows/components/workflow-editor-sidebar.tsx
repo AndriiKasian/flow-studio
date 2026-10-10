@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -5,6 +6,7 @@ import { Search } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { NODE_DEFINITIONS } from "../lib/node-definitions";
+import { NODE_DRAG_TYPE } from "../lib/workflow-canvas-config";
 
 const categoryLabels = {
   input: "Input",
@@ -65,29 +67,20 @@ export function WorkflowEditorSidebar() {
               <div className="space-y-1">
                 {nodes.map(([type, node]) => {
                   const Icon = node.icon;
-                  const draggable = true;
 
                   return (
                     <div
                       key={type}
                       data-node-category={node.category}
-                      draggable={draggable}
+                      draggable
                       onDragStart={(event) => {
-                        if (!draggable) {
-                          return;
-                        }
-
                         event.dataTransfer.setData(
-                          "application/flow-studio-node",
+                          NODE_DRAG_TYPE,
                           type,
                         );
                         event.dataTransfer.effectAllowed = "move";
                       }}
-                      className={`group flex items-start gap-3 rounded-lg border border-transparent p-2.5 transition-colors hover:bg-accent/50 ${
-                        draggable
-                          ? "cursor-grab active:cursor-grabbing"
-                          : "cursor-default"
-                      }`}
+                      className="group flex cursor-grab items-start gap-3 rounded-lg border border-transparent p-2.5 transition-colors hover:bg-accent/50 active:cursor-grabbing"
                     >
                       <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--node-color)_12%,transparent)] text-[var(--node-color)]">
                         <Icon className="size-4" />
