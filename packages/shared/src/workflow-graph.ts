@@ -1,4 +1,3 @@
-
 import { z } from "zod";
 
 import {
@@ -18,6 +17,10 @@ export const workflowNodeTypeSchema = z.enum([
   "textTransform",
   "textOutput",
 ]);
+
+export type WorkflowNodeType = z.infer<
+  typeof workflowNodeTypeSchema
+>;
 
 const baseNodeSchema = z.object({
   id: z.string().min(1),

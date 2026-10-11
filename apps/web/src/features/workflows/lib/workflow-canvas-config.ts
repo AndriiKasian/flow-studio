@@ -1,5 +1,6 @@
 
-import type { Node } from "@xyflow/react";
+import type { WorkflowNodeType } from "@flow-studio/shared";
+import type { Node, NodeTypes } from "@xyflow/react";
 
 import {
   WorkflowEdge,
@@ -27,7 +28,7 @@ export const nodeTypes = {
   llm: LlmNode,
   textTransform: TextTransformNode,
   textOutput: TextOutputNode,
-};
+} satisfies Record<WorkflowNodeType, NodeTypes[string]>;
 
 export const edgeTypes = {
   workflow: WorkflowEdge,

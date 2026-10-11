@@ -14,4 +14,17 @@ export {
   workflowEdgeSchema,
   workflowNodeTypeSchema,
   type WorkflowGraph,
+  type WorkflowNodeType,
 } from "./workflow-graph";
+
+export { WORKFLOW_HANDLES } from "./workflow-handles";
+
+export {
+  isWorkflowNodeType,
+  validateWorkflowConnection,
+  validateImportedWorkflowGraph,
+  type ConnectionError,
+  type WorkflowGraphValidationError,
+  type ConnectionNode,
+  type ConnectionEdge,
+} from "./workflow-connection";

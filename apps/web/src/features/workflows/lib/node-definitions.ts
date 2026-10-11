@@ -1,3 +1,6 @@
+
+import type { WorkflowNodeType } from "@flow-studio/shared";
+
 import {
   Braces,
   Cpu,
@@ -54,6 +57,6 @@ export const NODE_DEFINITIONS = {
     description: "Display the final text result.",
     icon: FileOutput,
   },
-} satisfies Record<string, NodeDefinition>;
+} satisfies Record<WorkflowNodeType, NodeDefinition>;
 
-export type WorkflowNodeType = keyof typeof NODE_DEFINITIONS;
+export type { WorkflowNodeType };
