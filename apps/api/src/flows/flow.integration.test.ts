@@ -1,13 +1,40 @@
+
 import {
   flowSchema,
   workflowGraphSchema,
 } from "@flow-studio/shared";
 import request from "supertest";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { app } from "../app.js";
+import { prisma } from "../lib/prisma.js";
 
 describe("Flows API", () => {
+  const createdFlowIds = new Set<string>();
+
+  function trackCreatedFlow(body: unknown) {
+    const flow = flowSchema.parse(body);
+    createdFlowIds.add(flow.id);
+    return flow;
+  }
+
+  afterEach(async () => {
+    const ids = [...createdFlowIds];
+    createdFlowIds.clear();
+
+    if (ids.length === 0) {
+      return;
+    }
+
+    await prisma.flow.deleteMany({
+      where: {
+        id: {
+          in: ids,
+        },
+      },
+    });
+  });
+
   it("creates a flow", async () => {
     const response = await request(app)
       .post("/flows")
@@ -17,11 +44,15 @@ describe("Flows API", () => {
       });
 
     expect(response.status).toBe(201);
-    expect(response.body).toMatchObject({
+
+    const createdFlow = trackCreatedFlow(response.body);
+
+    expect(createdFlow).toMatchObject({
       name: "Integration Test Flow",
       description: "Created by integration test",
     });
-    expect(response.body).toHaveProperty("id");
+
+    expect(createdFlow.id).toBeDefined();
   });
 
   it("returns 400 when flow name is empty", async () => {
@@ -33,7 +64,10 @@ describe("Flows API", () => {
       });
 
     expect(response.status).toBe(400);
-    expect(response.body).toHaveProperty("error", "Invalid request");
+    expect(response.body).toHaveProperty(
+      "error",
+      "Invalid request",
+    );
   });
 
   it("normalizes missing description to null", async () => {
@@ -44,7 +78,10 @@ describe("Flows API", () => {
       });
 
     expect(response.status).toBe(201);
-    expect(response.body).toMatchObject({
+
+    const createdFlow = trackCreatedFlow(response.body);
+
+    expect(createdFlow).toMatchObject({
       name: "Flow Without Description",
       description: null,
     });
@@ -60,7 +97,7 @@ describe("Flows API", () => {
 
     expect(createResponse.status).toBe(201);
 
-    const createdFlow = flowSchema.parse(createResponse.body);
+    const createdFlow = trackCreatedFlow(createResponse.body);
 
     const response = await request(app).get("/flows");
 
@@ -86,7 +123,7 @@ describe("Flows API", () => {
 
     expect(createResponse.status).toBe(201);
 
-    const createdFlow = flowSchema.parse(createResponse.body);
+    const createdFlow = trackCreatedFlow(createResponse.body);
 
     const response = await request(app)
       .patch(`/flows/${createdFlow.id}`)
@@ -113,7 +150,7 @@ describe("Flows API", () => {
 
     expect(createResponse.status).toBe(201);
 
-    const createdFlow = flowSchema.parse(createResponse.body);
+    const createdFlow = trackCreatedFlow(createResponse.body);
 
     const deleteResponse = await request(app).delete(
       `/flows/${createdFlow.id}`,
@@ -138,7 +175,7 @@ describe("Flows API", () => {
 
     expect(firstCreateResponse.status).toBe(201);
 
-    const firstFlow = flowSchema.parse(firstCreateResponse.body);
+    const firstFlow = trackCreatedFlow(firstCreateResponse.body);
 
     const secondCreateResponse = await request(app)
       .post("/flows")
@@ -149,7 +186,7 @@ describe("Flows API", () => {
 
     expect(secondCreateResponse.status).toBe(201);
 
-    const secondFlow = flowSchema.parse(secondCreateResponse.body);
+    const secondFlow = trackCreatedFlow(secondCreateResponse.body);
 
     const updateResponse = await request(app)
       .patch(`/flows/${firstFlow.id}`)
@@ -168,6 +205,7 @@ describe("Flows API", () => {
     const updatedFlowIndex = flows.findIndex(
       (flow) => flow.id === firstFlow.id,
     );
+
     const secondFlowIndex = flows.findIndex(
       (flow) => flow.id === secondFlow.id,
     );
@@ -201,7 +239,6 @@ describe("Flows API", () => {
     });
   });
 
-
   it("saves a workflow graph", async () => {
     const createResponse = await request(app)
       .post("/flows")
@@ -209,7 +246,7 @@ describe("Flows API", () => {
 
     expect(createResponse.status).toBe(201);
 
-    const createdFlow = flowSchema.parse(createResponse.body);
+    const createdFlow = trackCreatedFlow(createResponse.body);
 
     const graph = {
       nodes: [
@@ -245,6 +282,7 @@ describe("Flows API", () => {
     expect(response.status).toBe(200);
 
     const responseBody: unknown = response.body;
+
     const savedFlow = flowSchema.extend({
       graph: workflowGraphSchema,
     }).parse(responseBody);
@@ -259,7 +297,7 @@ describe("Flows API", () => {
 
     expect(createResponse.status).toBe(201);
 
-    const createdFlow = flowSchema.parse(createResponse.body);
+    const createdFlow = trackCreatedFlow(createResponse.body);
 
     const graph = {
       nodes: [
@@ -288,7 +326,9 @@ describe("Flows API", () => {
     );
 
     expect(getResponse.status).toBe(200);
+
     const responseBody: unknown = getResponse.body;
+
     const persistedFlow = flowSchema.extend({
       graph: workflowGraphSchema,
     }).parse(responseBody);
@@ -303,7 +343,7 @@ describe("Flows API", () => {
 
     expect(createResponse.status).toBe(201);
 
-    const createdFlow = flowSchema.parse(createResponse.body);
+    const createdFlow = trackCreatedFlow(createResponse.body);
 
     const response = await request(app)
       .put(`/flows/${createdFlow.id}/graph`)
