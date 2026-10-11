@@ -5,7 +5,16 @@ import {
   updateFlowSchema,
   workflowGraphSchema,
 } from "@flow-studio/shared";
-import { createFlow, deleteFlow, getFlowById, getFlows, updateFlow, saveFlowGraph } from "./flow.service.js";
+
+import { executeWorkflow } from "../execution/execute-workflow.js";
+import {
+  createFlow,
+  deleteFlow,
+  getFlowById,
+  getFlows,
+  updateFlow,
+  saveFlowGraph,
+} from "./flow.service.js";
 
 export async function createFlowController(req: Request, res: Response) {
   const result = createFlowSchema.safeParse(req.body);
@@ -61,7 +70,7 @@ export async function updateFlowController(
   }
 
   const flow = await updateFlow(req.params.id, result.data);
-  
+
   res.status(200).json(flow);
 }
 
@@ -92,4 +101,32 @@ export async function saveFlowGraphController(
   const flow = await saveFlowGraph(req.params.id, result.data);
 
   res.json(flow);
+}
+
+export async function executeFlowController(
+  req: Request<{ id: string }>,
+  res: Response,
+) {
+  const flow = await getFlowById(req.params.id);
+
+  if (!flow) {
+    res.status(404).json({
+      error: "Flow not found",
+    });
+    return;
+  }
+
+  const graph = workflowGraphSchema.safeParse(flow.graph);
+
+  if (!graph.success) {
+    res.status(400).json({
+      error: "Invalid workflow graph",
+      details: z.treeifyError(graph.error),
+    });
+    return;
+  }
+
+  const result = await executeWorkflow(graph.data);
+
+  res.status(200).json(result);
 }

@@ -4,25 +4,30 @@ import type {
   WorkflowNodeType,
 } from "@flow-studio/shared";
 
+import type { NodeInput } from "./collect-node-inputs";
 import { executeTextInput } from "./executor/text-input";
+import { executeTextOutput } from "./executor/text-output";
+import { executeTextTransform } from "./executor/text-transform";
 import type { NodeExecutionResult } from "./types";
 
 type WorkflowNode = WorkflowGraph["nodes"][number];
 
 type NodeExecutor = (
   node: WorkflowNode,
+  inputs: NodeInput[],
 ) => NodeExecutionResult | Promise<NodeExecutionResult>;
 
-const executors = {
+const executors: Partial<Record<WorkflowNodeType, NodeExecutor>> = {
   textInput: executeTextInput,
-} satisfies Partial<Record<WorkflowNodeType, NodeExecutor>>;
+  textTransform: executeTextTransform,
+  textOutput: executeTextOutput,
+};
 
 export async function executeNode(
   node: WorkflowNode,
+  inputs: NodeInput[],
 ): Promise<NodeExecutionResult> {
-  const executor: NodeExecutor | undefined = executors[
-    node.type as keyof typeof executors
-  ];
+  const executor = executors[node.type];
 
   if (!executor) {
     return {
@@ -31,5 +36,5 @@ export async function executeNode(
     };
   }
 
-  return executor(node);
+  return executor(node, inputs);
 }
