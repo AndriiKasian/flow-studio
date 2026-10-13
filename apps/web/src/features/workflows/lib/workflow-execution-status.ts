@@ -53,3 +53,25 @@ export function applyWorkflowExecutionEvent(
       return state;
   }
 }
+
+// Used when the execution stream ends without flow:stop, so no node
+// can be left running indefinitely.
+export function failRunningNodes(
+  state: WorkflowExecutionState,
+): WorkflowExecutionState {
+  const runningNodeIds = Object.keys(state.nodeStatuses).filter(
+    (nodeId) => state.nodeStatuses[nodeId] === "running",
+  );
+
+  if (runningNodeIds.length === 0) {
+    return state;
+  }
+
+  const nodeStatuses = { ...state.nodeStatuses };
+
+  for (const nodeId of runningNodeIds) {
+    nodeStatuses[nodeId] = "failed";
+  }
+
+  return { ...state, nodeStatuses };
+}

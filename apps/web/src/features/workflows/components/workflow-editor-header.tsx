@@ -65,7 +65,8 @@ export function WorkflowEditorHeader({
             variant="outline"
             size="sm"
             onClick={onImport}
-            className="cursor-pointer"
+            disabled={isRunning}
+            className="cursor-pointer disabled:cursor-not-allowed"
           >
             <Upload className="size-4" />
             Import

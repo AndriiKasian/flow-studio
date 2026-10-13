@@ -286,7 +286,7 @@ Do not add tests merely to increase test count.
 
 Backend API behavior is tested with Vitest and Supertest.
 
-Integration tests belong next to the corresponding backend feature.
+Integration tests belong to the corresponding backend feature, usually in its `__tests__` directory.
 
 Test source files may be part of the TypeScript project for type checking and linting, but API test execution must be scoped to source test files so compiled test artifacts are not executed a second time.
 
@@ -300,7 +300,7 @@ Current Flow integration coverage includes:
 - flow deletion;
 - ordering flows by most recently updated.
 
-Add frontend testing infrastructure when frontend behavior becomes complex enough to justify it; do not introduce a test stack solely for ceremonial coverage.
+Frontend Vitest tests already cover shared workflow graph behavior. Extend tests for critical runtime state, SSE handling, and regression-prone logic as needed.
 
 ## Quality Gate
 
@@ -309,7 +309,7 @@ Before considering a feature slice complete, run the relevant tests and reposito
 Current commands from repository root:
 
 ```bash
-pnpm --filter @flow-studio/api test
+pnpm -r --if-present test
 pnpm typecheck
 pnpm lint
 pnpm build:web
@@ -320,49 +320,13 @@ Do not claim a slice is complete before relevant tests and checks pass.
 
 If a check fails, fix the underlying issue rather than suppressing the rule unless the rule itself is demonstrably inappropriate.
 
-## Current Product Direction
+## Current Product State (October 2026)
 
-Flow Studio is being built incrementally.
+Implemented: workflow CRUD and persistence, React Flow editor, node palette and typed connections, shared graph validation, JSON import/export, Text Input / Text Transform / Text Output executors, execution of the current unsaved canvas graph, disconnected-node exclusion, fail-fast execution with skipped remaining nodes, SSE streaming, canvas node/edge statuses, client-side animation, runtime Text Output results, and Clear. Execution outputs and status are ephemeral and must never be persisted with graph data.
 
-Current implemented foundation:
+Not yet implemented: Prompt Template, LLM provider execution, authentication (email/password and Google OAuth), Redis-based LLM rate limiting, public deployment. The V1 roadmap remains: node configuration; workflow execution with branching; SSE/canvas visualization; LLM; authentication; deployment/CI; tests/UX/README/demo. Earlier stages may be refined, but do not reorder or silently remove roadmap stages.
 
-- pnpm monorepo;
-- Next.js frontend;
-- Express API;
-- PostgreSQL;
-- Prisma;
-- shared Zod/TypeScript contracts;
-- workflow CRUD API;
-- workflow management dashboard;
-- create, edit, and delete workflow flows;
-- workflow ordering by most recently updated;
-- dynamic workflow editor route;
-- workflow loading by ID;
-- full-screen Flow Editor shell;
-- React Flow canvas;
-- canvas pan, zoom, background, and controls;
-- React Flow light/dark theme integration;
-- React Hook Form integration;
-- shadcn/ui foundation;
-- light/dark theme support;
-- backend integration tests.
-
-Planned functionality includes:
-
-- workflow nodes;
-- Input / AI / Transform / Output node types for V1;
-- node handles and connections;
-- drag-and-drop node creation;
-- node and edge persistence;
-- workflow execution engine;
-- SSE execution updates;
-- live Execution Monitor;
-- execution-aware node and edge visualization;
-- authentication with email and Google;
-- CI/CD;
-- deployment.
-
-Planned technologies or features must not be treated as already implemented.
+There is no right-hand Execution Monitor / Node Details panel in V1. Show execution state on canvas, Text Output results in its node, and errors in toast. Do not reintroduce a monitor without an explicit product decision.
 
 ## Flow Editor Direction
 
@@ -375,42 +339,29 @@ The V1 node set is intentionally limited to:
 
 Avoid expanding the node model prematurely.
 
-### Execution Visualization Direction
+### Execution Architecture and Visualization
 
-Workflow execution should be represented directly on the canvas using real execution state rather than decorative mock animation.
+- Run executes the current unsaved canvas graph; Save/Export persist graph configuration only.
+- The API validates the graph, builds an execution subgraph excluding isolated nodes, sorts it topologically, and dispatches executors through the existing executor registry. Do not introduce a node-type switch/case dispatch or scattered manual registrations.
+- Connected components can run independently, but execution is fail-fast: a failed node stops the run and marks subsequent scheduled nodes skipped. An all-isolated graph cannot run.
+- `WorkflowExecutionEvent` is a shared contract in `packages/shared`. The backend emits `flow:start`, `node:start`, `node:stop` (including outputs for completed nodes), and `flow:stop`. Do not invent `node:delta` as already implemented.
+- Frontend execution state and animation are ephemeral. Runtime status and outputs are applied to display-only node/edge projections, not persisted graph nodes.
+- Node statuses are `idle`, `running`, `completed`, `failed`, `skipped`. The frontend owns minimum animation timing; backend must not add fake delays.
+- Text Output displays runtime `outputs.result`; Clear and a new Run reset runtime state without erasing node configuration.
+- Prefer focused hooks and pure helpers to a monolithic workflow editor, but do not extract abstractions solely to reduce line count.
 
-Planned execution states:
+## Claude Code Review Workflow
 
-- `idle` — normal node and edge appearance;
-- `running` — active node uses a brand-colored glow/pulse;
-- `completed` — completed node uses a success accent/check;
-- `failed` — failed node uses a destructive/error accent;
-- `skipped` — skipped node is visually muted.
-
-The edge currently carrying execution should be visually distinguishable and animated so execution can be followed through the graph.
-
-Execution visualization should be driven by real backend SSE events such as:
-
-```text
-node:start
-node:delta
-node:stop
-```
-
-Those events should feed shared frontend execution state that drives:
-
-```text
-SSE
- ↓
-Frontend execution state
- ├── canvas node state
- ├── active edge state
- └── Execution Monitor live logs
-```
-
-Execution effects should be polished in both themes, with particular attention to glow, motion, and contrast in dark mode.
-
-Keep execution visualization functional and state-driven. Do not add fake execution animation that is disconnected from backend execution state.
+- Before a substantial change, inspect existing code, dependency versions, schemas, and tests. Do not assume the repository matches old notes.
+- Use `/review-changes` after significant changes and before committing. It delegates the actual investigation to `architecture-reviewer` when available.
+- The reviewer is read-only and returns findings; it must not automatically modify files.
+- Review contracts end-to-end: `packages/shared` → API validation/execution → transport/SSE → frontend state → canvas/UI → tests.
+- Identical domain validations used by frontend and backend must have a single platform-independent implementation in `packages/shared`; keep HTTP and UI-specific logic local.
+- Prefer clear, cohesive modules. Flag oversized files only when they have mixed responsibilities or demonstrable maintenance cost; do not impose arbitrary line limits.
+- Flag stale closures, race conditions, missing effect cleanup, SSE cancellation bugs, avoidable expensive rerenders, unsafe inputs, secret leakage, and missing meaningful tests.
+- Recommend memoization and design patterns only when there is a concrete benefit. Avoid premature abstractions and speculative refactors.
+- Classify findings P0 (critical), P1 (high), P2 (medium), P3 (low); include file:line, evidence, impact, and the smallest coherent fix. Distinguish verified defects from risks and suggestions. If there are no findings, say so.
+- Prefer deterministic checks: `pnpm typecheck`, `pnpm lint`, `pnpm -r --if-present test`, then builds when appropriate. Report checks actually run, never claim unrun checks passed.
 
 ## Commands
 
@@ -420,6 +371,6 @@ From repository root:
 - `pnpm dev:api` — start Express API
 - `pnpm lint` — run current lint checks
 - `pnpm typecheck` — run current TypeScript checks
-- `pnpm --filter @flow-studio/api test` — run API tests
+- `pnpm -r --if-present test` — run workspace tests
 - `pnpm build:web` — build the web application
 - `pnpm build:api` — build the API

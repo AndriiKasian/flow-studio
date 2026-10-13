@@ -11,6 +11,25 @@ jobs:
     name: Quality checks
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: flow_studio
+          POSTGRES_PASSWORD: flow_studio_test
+          POSTGRES_DB: flow_studio
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U flow_studio -d flow_studio"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://flow_studio:flow_studio_test@localhost:5432/flow_studio
+      TEST_DATABASE_URL: postgresql://flow_studio:flow_studio_test@localhost:5432/flow_studio_test
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,11 +51,22 @@ jobs:
       - name: Generate Prisma Client
         run: pnpm --filter @flow-studio/api exec prisma generate
 
+      - name: Create test database
+        run: psql "$DATABASE_URL" -c "CREATE DATABASE flow_studio_test"
+
+      - name: Apply test database migrations
+        run: pnpm --filter @flow-studio/api exec prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+
       - name: Lint
         run: pnpm lint
 
       - name: Typecheck
         run: pnpm typecheck
+
+      - name: Test
+        run: pnpm -r --if-present test
 
       - name: Build web
         run: pnpm build:web

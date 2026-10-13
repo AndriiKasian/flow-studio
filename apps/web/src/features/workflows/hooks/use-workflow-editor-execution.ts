@@ -30,7 +30,7 @@ export function useWorkflowEditorExecution({
 }: UseWorkflowEditorExecutionOptions) {
   const { getNodes, getEdges } = useReactFlow();
 
-  const { executionState, reset, enqueue, flush } =
+  const { executionState, reset, enqueue, flush, interrupt } =
     useWorkflowAnimation();
 
   const flowStopEventRef = useRef<FlowStopEvent | null>(null);
@@ -84,6 +84,8 @@ export function useWorkflowEditorExecution({
           ? error.message
           : "Failed to execute workflow",
       );
+
+      await interrupt();
     }
   }, [
     isRunning,
@@ -93,6 +95,7 @@ export function useWorkflowEditorExecution({
     getNodes,
     getEdges,
     reset,
+    interrupt,
     run,
   ]);
 

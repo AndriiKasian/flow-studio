@@ -19,6 +19,7 @@ interface UseWorkflowFileActionsOptions {
   onError: (message: string) => void;
   onStart: () => void;
   onGraphImported: () => void;
+  isRunning: boolean;
 }
 
 export function useWorkflowFileActions({
@@ -27,6 +28,7 @@ export function useWorkflowFileActions({
   onError,
   onStart,
   onGraphImported,
+  isRunning,
 }: UseWorkflowFileActionsOptions) {
   const { getNodes, getEdges, setNodes, setEdges, fitView } =
     useReactFlow();
@@ -93,8 +95,10 @@ export function useWorkflowFileActions({
   }, [getNodes, getEdges, flowId, onError]);
 
   const handleImport = useCallback(() => {
+    if (isRunning) return;
+
     fileInputRef.current?.click();
-  }, []);
+  }, [isRunning]);
 
   const handleImportFileChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
@@ -121,7 +125,7 @@ export function useWorkflowFileActions({
   );
 
   const handleConfirmImport = useCallback(() => {
-    if (!pendingImport) return;
+    if (!pendingImport || isRunning) return;
 
     onGraphImported();
 
@@ -138,6 +142,7 @@ export function useWorkflowFileActions({
     );
   }, [
     pendingImport,
+    isRunning,
     onGraphImported,
     setNodes,
     setEdges,

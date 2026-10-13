@@ -63,6 +63,7 @@ function WorkflowEditorContent({ flow }: WorkflowEditorProps) {
     onError: showError,
     onStart: clearMessage,
     onGraphImported: resetExecution,
+    isRunning,
   });
 
   const handleClearExecution = () => {
@@ -135,7 +136,8 @@ function WorkflowEditorContent({ flow }: WorkflowEditorProps) {
             <Button
               type="button"
               onClick={handleConfirmImport}
-              className="cursor-pointer"
+              disabled={isRunning}
+              className="cursor-pointer disabled:cursor-not-allowed"
             >
               Import workflow
             </Button>

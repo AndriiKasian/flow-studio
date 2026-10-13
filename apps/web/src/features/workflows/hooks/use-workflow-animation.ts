@@ -5,6 +5,7 @@ import type { WorkflowExecutionEvent } from "@flow-studio/shared";
 
 import {
   applyWorkflowExecutionEvent,
+  failRunningNodes,
   initialWorkflowExecutionState,
   type WorkflowExecutionState,
 } from "../lib/workflow-execution-status";
@@ -92,6 +93,21 @@ export function useWorkflowAnimation() {
     await queueRef.current;
   }, []);
 
+  const interrupt = useCallback(async () => {
+    const controller = controllerRef.current;
+
+    if (!controller || controller.signal.aborted) return;
+
+    queueRef.current = queueRef.current.then(() => {
+      if (controller.signal.aborted) return;
+
+      nodeStartTimesRef.current.clear();
+      setExecutionState(failRunningNodes);
+    });
+
+    await queueRef.current;
+  }, []);
+
   useEffect(() => {
     return () => {
       controllerRef.current?.abort();
@@ -103,5 +119,6 @@ export function useWorkflowAnimation() {
     reset,
     enqueue,
     flush,
+    interrupt,
   };
 }
