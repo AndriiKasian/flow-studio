@@ -1,13 +1,7 @@
-
 "use client";
 
-import { useCallback, useRef, useState, type ChangeEvent } from "react";
-import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
-import {
-  workflowGraphSchema,
-  type Flow,
-  type WorkflowGraph,
-} from "@flow-studio/shared";
+import { ReactFlowProvider } from "@xyflow/react";
+import type { Flow } from "@flow-studio/shared";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,11 +13,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-import { saveWorkflowGraph } from "../actions/save-workflow-graph";
-import {
-  exportWorkflowToFile,
-  importWorkflowFromFile,
-} from "../lib/workflow-file";
+import { useWorkflowEditorExecution } from "../hooks/use-workflow-editor-execution";
+import { useWorkflowFileActions } from "../hooks/use-workflow-file-actions";
+import { useWorkflowToast } from "../hooks/use-workflow-toast";
 
 import { WorkflowCanvas } from "./workflow-canvas";
 import { WorkflowEditorHeader } from "./workflow-editor-header";
@@ -35,119 +27,49 @@ interface WorkflowEditorProps {
 }
 
 function WorkflowEditorContent({ flow }: WorkflowEditorProps) {
-  const { getNodes, getEdges, setNodes, setEdges, fitView } =
-    useReactFlow();
+  const {
+    message,
+    variant,
+    clearMessage,
+    showSuccess,
+    showError,
+  } = useWorkflowToast();
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const {
+    executionState,
+    isRunning,
+    handleRun,
+    resetExecution,
+  } = useWorkflowEditorExecution({
+    flowId: flow.id,
+    onSuccess: showSuccess,
+    onError: showError,
+    onStart: clearMessage,
+  });
 
-  const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [messageVariant, setMessageVariant] = useState<
-    "success" | "error"
-  >("success");
+  const {
+    isSaving,
+    pendingImport,
+    setPendingImport,
+    fileInputRef,
+    handleSave,
+    handleExport,
+    handleImport,
+    handleImportFileChange,
+    handleConfirmImport,
+  } = useWorkflowFileActions({
+    flowId: flow.id,
+    onSuccess: showSuccess,
+    onError: showError,
+    onStart: clearMessage,
+    onGraphImported: resetExecution,
+  });
 
-  const [pendingImport, setPendingImport] =
-    useState<WorkflowGraph | null>(null);
+  const handleClearExecution = () => {
+    if (isRunning) return;
 
-  const dismissMessage = useCallback(() => {
-    setMessage(null);
-  }, []);
-
-  const handleSave = async () => {
-    if (isSaving) return;
-
-    setMessage(null);
-
-    const result = workflowGraphSchema.safeParse({
-      nodes: getNodes(),
-      edges: getEdges(),
-    });
-
-    if (!result.success) {
-      setMessageVariant("error");
-      setMessage("Invalid workflow graph");
-      return;
-    }
-
-    setIsSaving(true);
-
-    try {
-      const response = await saveWorkflowGraph(flow.id, result.data);
-
-      if (!response.success) {
-        setMessageVariant("error");
-        setMessage(response.error);
-        return;
-      }
-
-      setMessageVariant("success");
-      setMessage("Workflow saved successfully");
-    } catch {
-      setMessageVariant("error");
-      setMessage("Failed to save workflow");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleExport = () => {
-    const result = workflowGraphSchema.safeParse({
-      nodes: getNodes(),
-      edges: getEdges(),
-    });
-
-    if (!result.success) {
-      setMessageVariant("error");
-      setMessage("Cannot export an invalid workflow graph");
-      return;
-    }
-
-    exportWorkflowToFile(result.data, `workflow-${flow.id}.json`);
-  };
-
-  const handleImport = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleImportFileChange = async (
-    event: ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
-
-    event.target.value = "";
-
-    if (!file) return;
-
-    setMessage(null);
-
-    try {
-      const graph = await importWorkflowFromFile(file);
-      setPendingImport(graph);
-    } catch (error) {
-      setMessageVariant("error");
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "Failed to import workflow",
-      );
-    }
-  };
-
-  const handleConfirmImport = () => {
-    if (!pendingImport) return;
-
-    setNodes(pendingImport.nodes);
-    setEdges(pendingImport.edges);
-    setPendingImport(null);
-
-    requestAnimationFrame(() => {
-      void fitView({ padding: 0.2, duration: 300 });
-    });
-
-    setMessageVariant("success");
-    setMessage(
-      "Workflow imported successfully. Click Save to persist.",
-    );
+    resetExecution();
+    clearMessage();
   };
 
   return (
@@ -157,7 +79,10 @@ function WorkflowEditorContent({ flow }: WorkflowEditorProps) {
         onSave={handleSave}
         onExport={handleExport}
         onImport={handleImport}
+        onRun={handleRun}
+        onClearExecution={handleClearExecution}
         isSaving={isSaving}
+        isRunning={isRunning}
       />
 
       <input
@@ -173,7 +98,10 @@ function WorkflowEditorContent({ flow }: WorkflowEditorProps) {
         <WorkflowEditorSidebar />
 
         <main className="relative min-w-0 flex-1 overflow-hidden">
-          <WorkflowCanvas initialGraph={flow.graph} />
+          <WorkflowCanvas
+            initialGraph={flow.graph}
+            executionState={executionState}
+          />
         </main>
       </div>
 
@@ -217,8 +145,8 @@ function WorkflowEditorContent({ flow }: WorkflowEditorProps) {
 
       <WorkflowToast
         message={message}
-        variant={messageVariant}
-        onDismiss={dismissMessage}
+        variant={variant}
+        onDismiss={clearMessage}
       />
     </div>
   );

@@ -2,8 +2,8 @@
 import type { WorkflowGraph } from "@flow-studio/shared";
 import { describe, expect, it } from "vitest";
 
-import type { NodeInput } from "../collect-node-inputs";
-import { executeTextTransform } from "./text-transform";
+import type { NodeInput } from "../../collect-node-inputs";
+import { executeTextTransform } from "../text-transform";
 
 type WorkflowNode = WorkflowGraph["nodes"][number];
 

@@ -1,8 +1,11 @@
 
-import type { WorkflowGraph } from "@flow-studio/shared";
+import type {
+  WorkflowExecutionEvent,
+  WorkflowGraph,
+} from "@flow-studio/shared";
 import { describe, expect, it } from "vitest";
 
-import { executeWorkflow } from "./execute-workflow";
+import { executeWorkflow } from "../execute-workflow";
 
 function createGraph(
   operation?: "trim" | "uppercase" | "lowercase",
@@ -81,7 +84,9 @@ describe("executeWorkflow", () => {
 
     expect(result.results["text-1"]?.status).toBe("completed");
     expect(result.results["transform-1"]?.status).toBe("failed");
-    expect(result.results["output-1"]).toBeUndefined();
+    expect(result.results["output-1"]).toEqual({
+      status: "skipped",
+    });
   });
 
   it("rejects an invalid graph before execution", async () => {
@@ -94,7 +99,6 @@ describe("executeWorkflow", () => {
     expect(result.status).toBe("failed");
     expect(result.results).toEqual({});
   });
-
 
   it("executes independent branches from one source", async () => {
     const graph: WorkflowGraph = {
@@ -186,5 +190,98 @@ describe("executeWorkflow", () => {
       status: "completed",
       outputs: { result: "hello world" },
     });
+  });
+
+  it("emits execution events in the correct order", async () => {
+    const events: WorkflowExecutionEvent[] = [];
+
+    const result = await executeWorkflow(
+      createGraph("uppercase"),
+      (event) => events.push(event),
+    );
+
+    expect(result.status).toBe("completed");
+
+    expect(events).toEqual([
+      { type: "flow:start" },
+      { type: "node:start", nodeId: "text-1" },
+      {
+        type: "node:stop",
+        nodeId: "text-1",
+        status: "completed",
+        outputs: {
+          text: "  Hello World  ",
+        },
+      },
+      { type: "node:start", nodeId: "transform-1" },
+      {
+        type: "node:stop",
+        nodeId: "transform-1",
+        status: "completed",
+        outputs: {
+          output: "  HELLO WORLD  ",
+        },
+      },
+      { type: "node:start", nodeId: "output-1" },
+      {
+        type: "node:stop",
+        nodeId: "output-1",
+        status: "completed",
+        outputs: {
+          result: "  HELLO WORLD  ",
+        },
+      },
+      { type: "flow:stop", status: "completed" },
+    ]);
+  });
+
+  it("emits failure events and stops execution", async () => {
+    const events: WorkflowExecutionEvent[] = [];
+
+    const result = await executeWorkflow(
+      createGraph(),
+      (event) => events.push(event),
+    );
+
+    expect(result.status).toBe("failed");
+
+    expect(events).toEqual([
+      { type: "flow:start" },
+      { type: "node:start", nodeId: "text-1" },
+      {
+        type: "node:stop",
+        nodeId: "text-1",
+        status: "completed",
+        outputs: {
+          text: "  Hello World  ",
+        },
+      },
+      { type: "node:start", nodeId: "transform-1" },
+      {
+        type: "node:stop",
+        nodeId: "transform-1",
+        status: "failed",
+        error: "Text Transform requires an operation",
+      },
+      {
+        type: "node:stop",
+        nodeId: "output-1",
+        status: "skipped",
+      },
+      {
+        type: "flow:stop",
+        status: "failed",
+        error:
+          'Node "transform-1" failed: Text Transform requires an operation',
+      },
+    ]);
+
+    expect(
+      events.some(
+        (event) =>
+          event.type === "node:start" &&
+          event.nodeId === "output-1",
+      ),
+    ).toBe(false);
   });
 });

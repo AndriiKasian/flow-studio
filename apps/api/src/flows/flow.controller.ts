@@ -4,6 +4,7 @@ import {
   createFlowSchema,
   updateFlowSchema,
   workflowGraphSchema,
+  type WorkflowExecutionEvent,
 } from "@flow-studio/shared";
 
 import { executeWorkflow } from "../execution/execute-workflow.js";
@@ -129,4 +130,71 @@ export async function executeFlowController(
   const result = await executeWorkflow(graph.data);
 
   res.status(200).json(result);
+}
+
+export async function executeFlowStreamController(
+  req: Request<{ id: string }>,
+  res: Response,
+) {
+  const flow = await getFlowById(req.params.id);
+
+  if (!flow) {
+    res.status(404).json({
+      error: "Flow not found",
+    });
+    return;
+  }
+
+  const body: unknown = req.body;
+  const graph = workflowGraphSchema.safeParse(body);
+
+  if (!graph.success) {
+    res.status(400).json({
+      error: "Invalid workflow graph",
+      details: z.treeifyError(graph.error),
+    });
+    return;
+  }
+
+  res.set({
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+
+  res.flushHeaders();
+
+  let disconnected = false;
+
+  res.on("close", () => {
+    disconnected = true;
+  });
+
+  const sendEvent = (event: WorkflowExecutionEvent) => {
+    if (disconnected || res.destroyed) {
+      return;
+    }
+
+    res.write(
+      `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`,
+    );
+  };
+
+  try {
+    await executeWorkflow(graph.data, sendEvent);
+  } catch (error) {
+    sendEvent({
+      type: "flow:stop",
+      status: "failed",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unknown execution error",
+    });
+  } finally {
+    if (!disconnected && !res.writableEnded) {
+      res.end();
+    }
+  }
 }

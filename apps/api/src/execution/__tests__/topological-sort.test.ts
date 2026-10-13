@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import type { WorkflowGraph } from "@flow-studio/shared";
 
-import { topologicalSort } from "./topological-sort";
+import { topologicalSort } from "../topological-sort";
 
 function createGraph(
   nodeIds: string[],

@@ -5,7 +5,7 @@ import {
   validateImportedWorkflowGraph,
   type ConnectionNode,
   type ConnectionEdge,
-} from "./workflow-connection";
+} from "../workflow-connection";
 
 const nodes: ConnectionNode[] = [
   { id: "input", type: "textInput" },

@@ -30,11 +30,7 @@ export function TextTransformNode({
         nodeId={id}
         name="operation"
         label="Operation"
-        value={
-          typeof data.operation === "string"
-            ? data.operation
-            : "trim"
-        }
+        value={typeof data.operation === "string" ? data.operation : ""}
         options={operations}
       />
 

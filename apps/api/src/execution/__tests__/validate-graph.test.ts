@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import type { WorkflowGraph } from "@flow-studio/shared";
 
-import { validateGraph } from "./validate-graph";
+import { validateGraph } from "../validate-graph";
 
 function createGraph(): WorkflowGraph {
   return {

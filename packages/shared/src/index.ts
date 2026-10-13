@@ -28,3 +28,5 @@ export {
   type ConnectionNode,
   type ConnectionEdge,
 } from "./workflow-connection";
+
+export type { WorkflowExecutionEvent } from "./workflow-execution-events";

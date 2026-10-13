@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import type { WorkflowGraph } from "@flow-studio/shared";
 
-import { executeTextInput } from "./text-input";
+import { executeTextInput } from "../text-input";
 
 type WorkflowNode = WorkflowGraph["nodes"][number];
 
@@ -27,14 +27,21 @@ describe("executeTextInput", () => {
     });
   });
 
-  it("allows an empty string", () => {
+  it("rejects an empty string", () => {
     const node = createTextInputNode("");
-
+  
     expect(executeTextInput(node)).toEqual({
-      status: "completed",
-      outputs: {
-        text: "",
-      },
+      status: "failed",
+      error: "Text Input node requires non-empty text",
+    });
+  });
+
+  it("rejects whitespace-only text", () => {
+    const node = createTextInputNode("   ");
+  
+    expect(executeTextInput(node)).toEqual({
+      status: "failed",
+      error: "Text Input node requires non-empty text",
     });
   });
 

@@ -1,6 +1,8 @@
+
 "use client";
 
 import { useReactFlow } from "@xyflow/react";
+import { ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
 
 interface NodeFieldProps {
@@ -97,6 +99,7 @@ interface NodeSelectProps {
   label: string;
   value: string;
   options: { label: string; value: string }[];
+  placeholder?: string;
 }
 
 export function NodeSelect({
@@ -105,6 +108,7 @@ export function NodeSelect({
   label,
   value,
   options,
+  placeholder = "Select an option",
 }: NodeSelectProps) {
   const { updateNodeData } = useReactFlow();
 
@@ -117,21 +121,35 @@ export function NodeSelect({
         {label}
       </label>
 
-      <select
-        id={`${nodeId}-${name}`}
-        name={name}
-        value={value}
-        onChange={(event) =>
-          updateNodeData(nodeId, { [name]: event.target.value })
-        }
-        className="workflow-node-field nodrag nowheel"
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
+      <div className="relative">
+        <select
+          id={`${nodeId}-${name}`}
+          name={name}
+          value={value}
+          onChange={(event) =>
+            updateNodeData(nodeId, {
+              [name]: event.target.value,
+            })
+          }
+          className="workflow-node-field nodrag nowheel appearance-none pr-10"
+        >
+          <option value="" disabled>
+            {placeholder}
           </option>
-        ))}
-      </select>
+
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+
+        <ChevronDown
+          aria-hidden="true"
+          size={16}
+          className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 -translate-y-1/2"
+        />
+      </div>
     </div>
   );
 }

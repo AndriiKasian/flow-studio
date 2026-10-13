@@ -21,6 +21,13 @@ export function executeTextInput(
       error: "Text Input node requires a string in data.text",
     };
   }
+  
+  if (node.data.text.trim().length === 0) {
+    return {
+      status: "failed",
+      error: "Text Input node requires non-empty text",
+    };
+  }
 
   return {
     status: "completed",

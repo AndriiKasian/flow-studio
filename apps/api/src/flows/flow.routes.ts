@@ -1,8 +1,11 @@
+
 import { Router } from "express";
+
 import {
   createFlowController,
   deleteFlowController,
   executeFlowController,
+  executeFlowStreamController,
   getFlowByIdController,
   getFlowsController,
   saveFlowGraphController,
@@ -17,4 +20,5 @@ flowRouter.get("/:id", getFlowByIdController);
 flowRouter.patch("/:id", updateFlowController);
 flowRouter.put("/:id/graph", saveFlowGraphController);
 flowRouter.post("/:id/execute", executeFlowController);
+flowRouter.post("/:id/execute/stream", executeFlowStreamController);
 flowRouter.delete("/:id", deleteFlowController);

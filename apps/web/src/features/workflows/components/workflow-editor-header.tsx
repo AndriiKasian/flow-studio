@@ -1,6 +1,12 @@
-
 import type { Flow } from "@flow-studio/shared";
-import { ArrowLeft, Download, Save, Upload } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  Play,
+  RotateCcw,
+  Save,
+  Upload,
+} from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -12,7 +18,10 @@ interface WorkflowEditorHeaderProps {
   onSave: () => void;
   onExport: () => void;
   onImport: () => void;
+  onRun: () => void;
+  onClearExecution: () => void;
   isSaving: boolean;
+  isRunning: boolean;
 }
 
 export function WorkflowEditorHeader({
@@ -20,7 +29,10 @@ export function WorkflowEditorHeader({
   onSave,
   onExport,
   onImport,
+  onRun,
+  onClearExecution,
   isSaving,
+  isRunning,
 }: WorkflowEditorHeaderProps) {
   return (
     <header className="border-border/60 bg-background/95 flex h-16 shrink-0 items-center border-b backdrop-blur">
@@ -78,6 +90,29 @@ export function WorkflowEditorHeader({
           >
             <Save className="size-4" />
             {isSaving ? "Saving..." : "Save"}
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onClearExecution}
+            disabled={isRunning}
+            className="cursor-pointer disabled:cursor-not-allowed"
+            title="Clear execution statuses"
+          >
+            <RotateCcw className="size-4" />
+            Clear
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onRun}
+            disabled={isRunning || isSaving}
+            className="cursor-pointer disabled:cursor-not-allowed"
+          >
+            <Play className="size-4" />
+            {isRunning ? "Running..." : "Run"}
           </Button>
 
           <ThemeToggle />

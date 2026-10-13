@@ -2,8 +2,8 @@
 import type { WorkflowGraph } from "@flow-studio/shared";
 import { describe, expect, it } from "vitest";
 
-import { collectNodeInputs } from "./collect-node-inputs";
-import type { NodeExecutionResult } from "./types";
+import { collectNodeInputs } from "../collect-node-inputs";
+import type { NodeExecutionResult } from "../types";
 
 describe("collectNodeInputs", () => {
   it("rejects edges without explicit handles", () => {
@@ -227,5 +227,4 @@ describe("collectNodeInputs", () => {
       'Source node "A" has no output "text"',
     );
   });
-
 });
