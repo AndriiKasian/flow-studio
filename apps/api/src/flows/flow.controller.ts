@@ -4,6 +4,7 @@ import {
   createFlowSchema,
   updateFlowSchema,
   workflowGraphSchema,
+  normalizeWorkflowGraph,
   type WorkflowExecutionEvent,
 } from "@flow-studio/shared";
 
@@ -53,7 +54,16 @@ export async function getFlowByIdController(
     return;
   }
 
-  res.status(200).json(flow);
+  const graph = flow.graph === null ? null : normalizeWorkflowGraph(flow.graph);
+
+  if (flow.graph !== null && graph === null) {
+    res.status(500).json({
+      error: "Stored workflow graph is invalid",
+    });
+    return;
+  }
+
+  res.status(200).json({ ...flow, graph });
 }
 
 export async function updateFlowController(
@@ -117,17 +127,16 @@ export async function executeFlowController(
     return;
   }
 
-  const graph = workflowGraphSchema.safeParse(flow.graph);
+  const graph = normalizeWorkflowGraph(flow.graph);
 
-  if (!graph.success) {
+  if (!graph) {
     res.status(400).json({
       error: "Invalid workflow graph",
-      details: z.treeifyError(graph.error),
     });
     return;
   }
 
-  const result = await executeWorkflow(graph.data);
+  const result = await executeWorkflow(graph);
 
   res.status(200).json(result);
 }

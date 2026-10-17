@@ -1,6 +1,5 @@
-
 import {
-  workflowGraphSchema,
+  normalizeWorkflowGraph,
   type WorkflowGraph,
 } from "@flow-studio/shared";
 
@@ -39,13 +38,11 @@ export async function importWorkflowFromFile(
     throw new Error("Invalid JSON file.");
   }
 
-  const result = workflowGraphSchema.safeParse(json);
+  const graph = normalizeWorkflowGraph(json);
 
-  if (!result.success) {
+  if (!graph) {
     throw new Error("Invalid workflow file structure.");
   }
-
-  const graph = result.data;
 
   const connectionError = validateImportedWorkflowGraph(
     graph.nodes,

@@ -322,9 +322,9 @@ If a check fails, fix the underlying issue rather than suppressing the rule unle
 
 ## Current Product State (October 2026)
 
-Implemented: workflow CRUD and persistence, React Flow editor, node palette and typed connections, shared graph validation, JSON import/export, Text Input / Text Transform / Text Output executors, execution of the current unsaved canvas graph, disconnected-node exclusion, fail-fast execution with skipped remaining nodes, SSE streaming, canvas node/edge statuses, client-side animation, runtime Text Output results, and Clear. Execution outputs and status are ephemeral and must never be persisted with graph data.
+Implemented: workflow CRUD and persistence, React Flow editor, node palette and typed connections, shared graph validation, JSON import/export, Text Input / Prompt Template / Text Transform / Text Output executors, Prompt Template dynamic input ports with stable IDs and inactive connection preservation, execution of the current unsaved canvas graph, disconnected-node exclusion, fail-fast execution with skipped remaining nodes, SSE streaming, canvas node/edge statuses, client-side animation, runtime Text Output results, and Clear. Execution outputs and status are ephemeral and must never be persisted with graph data.
 
-Not yet implemented: Prompt Template, LLM provider execution, authentication (email/password and Google OAuth), Redis-based LLM rate limiting, public deployment. The V1 roadmap remains: node configuration; workflow execution with branching; SSE/canvas visualization; LLM; authentication; deployment/CI; tests/UX/README/demo. Earlier stages may be refined, but do not reorder or silently remove roadmap stages.
+Not yet implemented: LLM provider execution, authentication (email/password and Google OAuth), Redis-based LLM rate limiting, public deployment. The V1 roadmap remains: node configuration; workflow execution with branching; SSE/canvas visualization; LLM; authentication; deployment/CI; tests/UX/README/demo. Earlier stages may be refined, but do not reorder or silently remove roadmap stages.
 
 There is no right-hand Execution Monitor / Node Details panel in V1. Show execution state on canvas, Text Output results in its node, and errors in toast. Do not reintroduce a monitor without an explicit product decision.
 

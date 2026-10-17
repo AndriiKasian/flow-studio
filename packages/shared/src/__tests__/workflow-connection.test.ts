@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isActiveInputHandle,
   validateWorkflowConnection,
   validateImportedWorkflowGraph,
   type ConnectionNode,
@@ -319,6 +320,17 @@ describe("validateImportedWorkflowGraph", () => {
   });
 
   it("rejects cyclic graphs", () => {
+    const cyclicNodes: ConnectionNode[] = [
+      { id: "transform", type: "textTransform" },
+      {
+        id: "prompt",
+        type: "promptTemplate",
+        data: {
+          template: "Process {{input}}",
+        },
+      },
+    ];
+
     const edges = [
       createEdge(
         "edge-1",
@@ -341,7 +353,7 @@ describe("validateImportedWorkflowGraph", () => {
     ];
 
     expect(
-      validateImportedWorkflowGraph(nodes, edges),
+      validateImportedWorkflowGraph(cyclicNodes, edges),
     ).toBe("cycle");
   });
 
@@ -361,5 +373,105 @@ describe("validateImportedWorkflowGraph", () => {
     expect(
       validateImportedWorkflowGraph(nodes, edges),
     ).toBe("invalid");
+  });
+});
+
+describe("stable Prompt Template handles", () => {
+  const stableNodes: ConnectionNode[] = [
+    { id: "source", type: "textInput" },
+    {
+      id: "prompt",
+      type: "promptTemplate",
+      data: {
+        template: "Hello {{first}}",
+        inputs: [
+          { id: "input-1", name: "first" },
+          { id: "input-2", name: "removed" },
+        ],
+      },
+    },
+  ];
+
+  it("accepts stable port IDs after renaming", () => {
+    expect(
+      validateWorkflowConnection(
+        {
+          source: "source",
+          sourceHandle: "text",
+          target: "prompt",
+          targetHandle: "input-1",
+        },
+        stableNodes,
+        [],
+      ),
+    ).toBeNull();
+  });
+
+  it("preserves edges for temporarily inactive ports on import", () => {
+    expect(
+      validateImportedWorkflowGraph(stableNodes, [
+        {
+          id: "edge-1",
+          source: "source",
+          sourceHandle: "text",
+          target: "prompt",
+          targetHandle: "input-2",
+        },
+      ]),
+    ).toBeNull();
+  });
+
+  it("rejects an unknown port ID", () => {
+    expect(
+      validateWorkflowConnection(
+        {
+          source: "source",
+          sourceHandle: "text",
+          target: "prompt",
+          targetHandle: "unknown",
+        },
+        stableNodes,
+        [],
+      ),
+    ).toBe("invalid");
+  });
+});
+
+describe("isActiveInputHandle", () => {
+  const prompt: ConnectionNode = {
+    id: "prompt",
+    type: "promptTemplate",
+    data: {
+      template: "Hello {{first}}",
+      inputs: [
+        { id: "input-1", name: "first" },
+        { id: "input-2", name: "removed" },
+      ],
+    },
+  };
+
+  it("treats ports referenced by the template as active", () => {
+    expect(isActiveInputHandle(prompt, "input-1")).toBe(true);
+  });
+
+  it("treats ports of removed variables as inactive", () => {
+    expect(isActiveInputHandle(prompt, "input-2")).toBe(false);
+  });
+
+  it("uses variable names for legacy Prompt Template nodes", () => {
+    const legacy: ConnectionNode = {
+      id: "prompt",
+      type: "promptTemplate",
+      data: { template: "Hello {{first}}" },
+    };
+
+    expect(isActiveInputHandle(legacy, "first")).toBe(true);
+    expect(isActiveInputHandle(legacy, "other")).toBe(false);
+  });
+
+  it("treats inputs of other node types as active", () => {
+    expect(
+      isActiveInputHandle({ id: "output", type: "textOutput" }, "input"),
+    ).toBe(true);
   });
 });

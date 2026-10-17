@@ -2,12 +2,10 @@
 
 import { useCallback, useRef, useState, type ChangeEvent } from "react";
 import { useReactFlow } from "@xyflow/react";
-import {
-  workflowGraphSchema,
-  type WorkflowGraph,
-} from "@flow-studio/shared";
+import type { WorkflowGraph } from "@flow-studio/shared";
 
 import { saveWorkflowGraph } from "../actions/save-workflow-graph";
+import { prepareWorkflowGraph } from "../lib/prepare-workflow-graph";
 import {
   exportWorkflowToFile,
   importWorkflowFromFile,
@@ -18,7 +16,7 @@ interface UseWorkflowFileActionsOptions {
   onSuccess: (message: string) => void;
   onError: (message: string) => void;
   onStart: () => void;
-  onGraphImported: () => void;
+  onGraphImported: (graph: WorkflowGraph) => void;
   isRunning: boolean;
 }
 
@@ -30,8 +28,7 @@ export function useWorkflowFileActions({
   onGraphImported,
   isRunning,
 }: UseWorkflowFileActionsOptions) {
-  const { getNodes, getEdges, setNodes, setEdges, fitView } =
-    useReactFlow();
+  const { getNodes, getEdges, setNodes, setEdges } = useReactFlow();
 
   const [isSaving, setIsSaving] = useState(false);
   const [pendingImport, setPendingImport] =
@@ -44,12 +41,12 @@ export function useWorkflowFileActions({
 
     onStart();
 
-    const result = workflowGraphSchema.safeParse({
-      nodes: getNodes(),
-      edges: getEdges(),
-    });
+    const graph = prepareWorkflowGraph(
+      getNodes(),
+      getEdges(),
+    );
 
-    if (!result.success) {
+    if (!graph) {
       onError("Invalid workflow graph");
       return;
     }
@@ -57,7 +54,7 @@ export function useWorkflowFileActions({
     setIsSaving(true);
 
     try {
-      const response = await saveWorkflowGraph(flowId, result.data);
+      const response = await saveWorkflowGraph(flowId, graph);
 
       if (!response.success) {
         onError(response.error);
@@ -81,17 +78,17 @@ export function useWorkflowFileActions({
   ]);
 
   const handleExport = useCallback(() => {
-    const result = workflowGraphSchema.safeParse({
-      nodes: getNodes(),
-      edges: getEdges(),
-    });
+    const graph = prepareWorkflowGraph(
+      getNodes(),
+      getEdges(),
+    );
 
-    if (!result.success) {
+    if (!graph) {
       onError("Cannot export an invalid workflow graph");
       return;
     }
 
-    exportWorkflowToFile(result.data, `workflow-${flowId}.json`);
+    exportWorkflowToFile(graph, `workflow-${flowId}.json`);
   }, [getNodes, getEdges, flowId, onError]);
 
   const handleImport = useCallback(() => {
@@ -127,15 +124,11 @@ export function useWorkflowFileActions({
   const handleConfirmImport = useCallback(() => {
     if (!pendingImport || isRunning) return;
 
-    onGraphImported();
+    onGraphImported(pendingImport);
 
     setNodes(pendingImport.nodes);
     setEdges(pendingImport.edges);
     setPendingImport(null);
-
-    requestAnimationFrame(() => {
-      void fitView({ padding: 0.2, duration: 300 });
-    });
 
     onSuccess(
       "Workflow imported successfully. Click Save to persist.",
@@ -146,7 +139,6 @@ export function useWorkflowFileActions({
     onGraphImported,
     setNodes,
     setEdges,
-    fitView,
     onSuccess,
   ]);
 

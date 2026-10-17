@@ -1,7 +1,8 @@
 "use client";
 
+import { useCallback, useRef, useState } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
-import type { Flow } from "@flow-studio/shared";
+import type { Flow, WorkflowGraph } from "@flow-studio/shared";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +14,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+import type { WorkflowCanvasGraph } from "../hooks/use-workflow-canvas";
+import {
+  createFitViewRequest,
+  type FitViewRequest,
+} from "../lib/fit-view-request";
 import { useWorkflowEditorExecution } from "../hooks/use-workflow-editor-execution";
 import { useWorkflowFileActions } from "../hooks/use-workflow-file-actions";
 import { useWorkflowToast } from "../hooks/use-workflow-toast";
@@ -35,6 +41,25 @@ function WorkflowEditorContent({ flow }: WorkflowEditorProps) {
     showError,
   } = useWorkflowToast();
 
+  // Synced by WorkflowCanvas, which owns the canvas state, so node drags
+  // do not rerender the whole editor.
+  const canvasGraphRef = useRef<WorkflowCanvasGraph>({
+    nodes: [],
+    edges: [],
+  });
+
+  const getCanvasGraph = useCallback(() => canvasGraphRef.current, []);
+
+  // Consumed by WorkflowCanvas once the requested nodes have been measured.
+  // An empty workflow has no request, so the first dropped node never fits.
+  const [initialFitViewRequest] = useState(() =>
+    createFitViewRequest(flow.graph?.nodes ?? [], false),
+  );
+
+  const fitViewRequestRef = useRef<FitViewRequest | null>(
+    initialFitViewRequest,
+  );
+
   const {
     executionState,
     isRunning,
@@ -42,10 +67,19 @@ function WorkflowEditorContent({ flow }: WorkflowEditorProps) {
     resetExecution,
   } = useWorkflowEditorExecution({
     flowId: flow.id,
+    getCanvasGraph,
     onSuccess: showSuccess,
     onError: showError,
     onStart: clearMessage,
   });
+
+  const handleGraphImported = useCallback(
+    (graph: WorkflowGraph) => {
+      resetExecution();
+      fitViewRequestRef.current = createFitViewRequest(graph.nodes, true);
+    },
+    [resetExecution],
+  );
 
   const {
     isSaving,
@@ -62,7 +96,7 @@ function WorkflowEditorContent({ flow }: WorkflowEditorProps) {
     onSuccess: showSuccess,
     onError: showError,
     onStart: clearMessage,
-    onGraphImported: resetExecution,
+    onGraphImported: handleGraphImported,
     isRunning,
   });
 
@@ -101,6 +135,8 @@ function WorkflowEditorContent({ flow }: WorkflowEditorProps) {
         <main className="relative min-w-0 flex-1 overflow-hidden">
           <WorkflowCanvas
             initialGraph={flow.graph}
+            graphRef={canvasGraphRef}
+            fitViewRequestRef={fitViewRequestRef}
             executionState={executionState}
           />
         </main>

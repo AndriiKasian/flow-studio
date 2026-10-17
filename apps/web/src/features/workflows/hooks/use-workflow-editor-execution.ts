@@ -1,12 +1,10 @@
 "use client";
 
 import { useCallback, useRef } from "react";
-import { useReactFlow } from "@xyflow/react";
-import {
-  workflowGraphSchema,
-  type WorkflowExecutionEvent,
-} from "@flow-studio/shared";
+import type { WorkflowExecutionEvent } from "@flow-studio/shared";
 
+import { prepareWorkflowGraph } from "../lib/prepare-workflow-graph";
+import type { WorkflowCanvasGraph } from "./use-workflow-canvas";
 import { useWorkflowAnimation } from "./use-workflow-animation";
 import { useWorkflowExecution } from "./use-workflow-execution";
 
@@ -17,6 +15,7 @@ type FlowStopEvent = Extract<
 
 interface UseWorkflowEditorExecutionOptions {
   flowId: string;
+  getCanvasGraph: () => WorkflowCanvasGraph;
   onSuccess: (message: string) => void;
   onError: (message: string) => void;
   onStart: () => void;
@@ -24,12 +23,11 @@ interface UseWorkflowEditorExecutionOptions {
 
 export function useWorkflowEditorExecution({
   flowId,
+  getCanvasGraph,
   onSuccess,
   onError,
   onStart,
 }: UseWorkflowEditorExecutionOptions) {
-  const { getNodes, getEdges } = useReactFlow();
-
   const { executionState, reset, enqueue, flush, interrupt } =
     useWorkflowAnimation();
 
@@ -52,12 +50,12 @@ export function useWorkflowEditorExecution({
 
     onStart();
 
-    const graph = workflowGraphSchema.safeParse({
-      nodes: getNodes(),
-      edges: getEdges(),
-    });
+    // Canvas state, not getNodes(): React Flow's store holds the display
+    // projections with runtime results and statuses.
+    const { nodes, edges } = getCanvasGraph();
+    const graph = prepareWorkflowGraph(nodes, edges);
 
-    if (!graph.success) {
+    if (!graph) {
       onError("Invalid workflow graph");
       return;
     }
@@ -66,7 +64,7 @@ export function useWorkflowEditorExecution({
     reset();
 
     try {
-      await run(graph.data);
+      await run(graph);
 
       const getFlowStopEvent = () => flowStopEventRef.current;
       const event = getFlowStopEvent();
@@ -92,8 +90,7 @@ export function useWorkflowEditorExecution({
     onStart,
     onSuccess,
     onError,
-    getNodes,
-    getEdges,
+    getCanvasGraph,
     reset,
     interrupt,
     run,

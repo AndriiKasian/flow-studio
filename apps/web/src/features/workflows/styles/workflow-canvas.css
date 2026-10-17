@@ -179,6 +179,20 @@
   opacity: 0.35;
 }
 
+.workflow-edge[data-inactive="true"] .workflow-edge-path {
+  stroke-dasharray: 4 4;
+  opacity: 0.6;
+}
+
+.workflow-edge[data-inactive="true"] .workflow-edge-glow {
+  opacity: 0;
+}
+
+.workflow-edge[data-inactive="true"][data-selected="true"]
+  .workflow-edge-path {
+  opacity: 1;
+}
+
 .react-flow__edge.selected .workflow-edge-path {
   stroke: var(--edge-color);
 }

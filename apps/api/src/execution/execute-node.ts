@@ -1,10 +1,10 @@
-
 import type {
   WorkflowGraph,
   WorkflowNodeType,
 } from "@flow-studio/shared";
 
 import type { NodeInput } from "./collect-node-inputs";
+import { executePromptTemplate } from "./executor/prompt-template";
 import { executeTextInput } from "./executor/text-input";
 import { executeTextOutput } from "./executor/text-output";
 import { executeTextTransform } from "./executor/text-transform";
@@ -20,6 +20,7 @@ type NodeExecutor = (
 const executors: Partial<Record<WorkflowNodeType, NodeExecutor>> = {
   textInput: executeTextInput,
   textTransform: executeTextTransform,
+  promptTemplate: executePromptTemplate,
   textOutput: executeTextOutput,
 };
 

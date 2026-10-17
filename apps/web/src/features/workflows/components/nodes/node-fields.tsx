@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useReactFlow } from "@xyflow/react";
@@ -17,6 +16,7 @@ interface NodeFieldProps {
   min?: number;
   max?: number;
   step?: number;
+  onValueChange?: (nextValue: string) => void;
 }
 
 export function NodeField({
@@ -31,10 +31,16 @@ export function NodeField({
   min,
   max,
   step,
+  onValueChange,
 }: NodeFieldProps) {
   const { updateNodeData } = useReactFlow();
 
   const updateValue = (nextValue: string) => {
+    if (onValueChange) {
+      onValueChange(nextValue);
+      return;
+    }
+
     if (type === "number") {
       if (nextValue === "") {
         updateNodeData(nodeId, { [name]: undefined });
@@ -61,7 +67,9 @@ export function NodeField({
     placeholder,
     className: "workflow-node-field nodrag nowheel",
     onChange: (
-      event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+      event: React.ChangeEvent<
+        HTMLInputElement | HTMLTextAreaElement
+      >,
     ) => updateValue(event.target.value),
   };
 

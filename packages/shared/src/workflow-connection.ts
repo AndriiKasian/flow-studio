@@ -1,4 +1,11 @@
-import { WORKFLOW_HANDLES } from "./workflow-handles";
+import {
+  getActivePromptTemplateInputs,
+  type PromptTemplateInput,
+} from "./prompt-template-inputs";
+import {
+  extractPromptVariables,
+  WORKFLOW_HANDLES,
+} from "./workflow-handles";
 import type { WorkflowNodeType } from "./workflow-graph";
 
 export type ConnectionError =
@@ -14,6 +21,7 @@ export type WorkflowGraphValidationError =
 export interface ConnectionNode {
   id: string;
   type?: string;
+  data?: unknown;
 }
 
 export interface ConnectionEdge {
@@ -28,6 +36,90 @@ export function isWorkflowNodeType(
   value: string,
 ): value is WorkflowNodeType {
   return Object.hasOwn(WORKFLOW_HANDLES, value);
+}
+
+function getInputHandles(node: ConnectionNode): readonly string[] {
+  if (node.type !== "promptTemplate") {
+    return node.type && isWorkflowNodeType(node.type)
+      ? WORKFLOW_HANDLES[node.type].inputs
+      : [];
+  }
+
+  const data = node.data;
+
+  if (
+    typeof data !== "object" ||
+    data === null ||
+    !("template" in data) ||
+    typeof data.template !== "string"
+  ) {
+    return [];
+  }
+
+  if ("inputs" in data && Array.isArray(data.inputs)) {
+    return data.inputs.flatMap((input: unknown) => {
+      if (
+        typeof input === "object" &&
+        input !== null &&
+        "id" in input &&
+        typeof input.id === "string"
+      ) {
+        return [input.id];
+      }
+
+      return [];
+    });
+  }
+
+  // Legacy workflows use variable names as handle IDs.
+  return extractPromptVariables(data.template);
+}
+
+function isPromptTemplateInput(
+  value: unknown,
+): value is PromptTemplateInput {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "id" in value &&
+    typeof value.id === "string" &&
+    "name" in value &&
+    typeof value.name === "string"
+  );
+}
+
+/**
+ * Whether an edge into this input handle takes part in execution.
+ * Prompt Template ports whose variable was removed from the template
+ * stay connected but inactive.
+ */
+export function isActiveInputHandle(
+  node: ConnectionNode,
+  handleId: string | null | undefined,
+): boolean {
+  if (node.type !== "promptTemplate") {
+    return true;
+  }
+
+  const data = node.data;
+
+  if (typeof data !== "object" || data === null) {
+    return false;
+  }
+
+  const template =
+    "template" in data && typeof data.template === "string"
+      ? data.template
+      : "";
+
+  const inputs =
+    "inputs" in data && Array.isArray(data.inputs)
+      ? data.inputs.filter(isPromptTemplateInput)
+      : undefined;
+
+  return getActivePromptTemplateInputs(template, inputs).some(
+    (input) => input.id === handleId,
+  );
 }
 
 export function validateWorkflowConnection(
@@ -63,9 +155,7 @@ export function validateWorkflowConnection(
     !WORKFLOW_HANDLES[sourceNode.type].outputs.some(
       (handle) => handle === sourceHandle,
     ) ||
-    !WORKFLOW_HANDLES[targetNode.type].inputs.some(
-      (handle) => handle === targetHandle,
-    )
+    !getInputHandles(targetNode).includes(targetHandle)
   ) {
     return "invalid";
   }

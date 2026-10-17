@@ -1,4 +1,3 @@
-
 import { describe, expect, it } from "vitest";
 import type { WorkflowGraph } from "@flow-studio/shared";
 
@@ -75,7 +74,7 @@ describe("validateGraph", () => {
           id: "node-2",
           type: "promptTemplate",
           position: { x: 200, y: 0 },
-          data: {},
+          data: { template: "{{input}}" },
         },
       ],
       edges: [

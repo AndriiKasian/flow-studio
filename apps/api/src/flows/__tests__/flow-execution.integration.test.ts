@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { app } from "../../app.js";
 import { createFlowTestContext } from "./helpers/flow-test-context.js";
+import { prisma } from "../../lib/prisma.js";
 
 describe("Flows API - Execution", () => {
   const { trackCreatedFlow, cleanup } = createFlowTestContext();
@@ -156,4 +157,73 @@ describe("Flows API - Execution", () => {
       error: "Flow not found",
     });
   });
+
+  it("executes a legacy workflow with a stored Text Output result", async () => {
+    const createResponse = await request(app)
+      .post("/flows")
+      .send({ name: "Legacy Executable Flow" });
+
+    expect(createResponse.status).toBe(201);
+
+    const flow = trackCreatedFlow(createResponse.body);
+
+    const legacyGraph = {
+      nodes: [
+        {
+          id: "input-1",
+          type: "textInput",
+          position: { x: 0, y: 0 },
+          data: { text: "New execution value" },
+        },
+        {
+          id: "output-1",
+          type: "textOutput",
+          position: { x: 200, y: 0 },
+          data: { result: "Old execution value" },
+        },
+      ],
+      edges: [
+        {
+          id: "edge-1",
+          source: "input-1",
+          sourceHandle: "text",
+          target: "output-1",
+          targetHandle: "input",
+        },
+      ],
+    };
+
+    // Simulate a graph saved before Text Output results became ephemeral.
+    await prisma.flow.update({
+      where: { id: flow.id },
+      data: { graph: legacyGraph },
+    });
+
+    const response = await request(app)
+      .post(`/flows/${flow.id}/execute`);
+
+    expect(response.status).toBe(200);
+
+    expect(response.body).toMatchObject({
+      status: "completed",
+      results: {
+        "input-1": {
+          status: "completed",
+          outputs: { text: "New execution value" },
+        },
+        "output-1": {
+          status: "completed",
+          outputs: { result: "New execution value" },
+        },
+      },
+    });
+
+    // Execution must not modify the persisted workflow graph.
+    const storedFlow = await prisma.flow.findUnique({
+      where: { id: flow.id },
+    });
+
+    expect(storedFlow?.graph).toEqual(legacyGraph);
+  });
+
 });

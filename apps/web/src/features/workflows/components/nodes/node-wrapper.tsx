@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Handle, Position } from "@xyflow/react";
 import type { LucideIcon } from "lucide-react";
 
@@ -44,15 +44,49 @@ export function NodeWrapper({
 interface NodeHandleProps {
   id: string;
   type: "source" | "target";
+  top?: CSSProperties["top"];
+  left?: CSSProperties["left"];
+  label?: string;
+  inactive?: boolean;
 }
 
-export function NodeHandle({ id, type }: NodeHandleProps) {
+export function NodeHandle({
+  id,
+  type,
+  top,
+  left,
+  label,
+  inactive = false,
+}: NodeHandleProps) {
+  const position =
+    type === "target" ? Position.Left : Position.Right;
+
   return (
-    <Handle
-      id={id}
-      type={type}
-      position={type === "target" ? Position.Left : Position.Right}
-      className="!size-3 !border-2 !border-background !bg-[var(--node-color)]"
-    />
+    <>
+      <Handle
+        id={id}
+        type={type}
+        position={position}
+        isConnectable={!inactive}
+        style={{
+          ...(top !== undefined ? { top } : {}),
+          ...(left !== undefined ? { left } : {}),
+        }}
+        className={
+          inactive
+            ? "!size-3 !border-2 !border-background !bg-muted-foreground opacity-50"
+            : "!size-3 !border-2 !border-background !bg-[var(--node-color)]"
+        }
+      />
+
+      {label && top !== undefined && (
+        <span
+          className="pointer-events-none absolute left-4 -translate-y-1/2 text-xs text-muted-foreground"
+          style={{ top }}
+        >
+          {label}
+        </span>
+      )}
+    </>
   );
 }

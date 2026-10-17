@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { app } from "../../app.js";
 import { createFlowTestContext } from "./helpers/flow-test-context.js";
+import { prisma } from "../../lib/prisma.js";
 
 describe("Flows API - Graph", () => {
   const { trackCreatedFlow, cleanup } = createFlowTestContext();
@@ -138,6 +139,96 @@ describe("Flows API - Graph", () => {
       "error",
       "Invalid workflow graph",
     );
+  });
+
+  it("normalizes legacy Text Output results when loading a flow", async () => {
+    const createResponse = await request(app)
+      .post("/flows")
+      .send({ name: "Legacy Text Output Graph" });
+
+    expect(createResponse.status).toBe(201);
+
+    const createdFlow = trackCreatedFlow(createResponse.body);
+
+    const legacyGraph = {
+      nodes: [
+        {
+          id: "input-1",
+          type: "textInput",
+          position: { x: 100, y: 200 },
+          data: { text: "Hello world" },
+        },
+        {
+          id: "output-1",
+          type: "textOutput",
+          position: { x: 400, y: 200 },
+          data: { result: "Old execution result" },
+        },
+      ],
+      edges: [
+        {
+          id: "edge-1",
+          source: "input-1",
+          target: "output-1",
+          sourceHandle: "text",
+          targetHandle: "input",
+          type: "workflow",
+        },
+      ],
+    };
+
+    await prisma.flow.update({
+      where: { id: createdFlow.id },
+      data: { graph: legacyGraph },
+    });
+
+    const response = await request(app).get(
+      `/flows/${createdFlow.id}`,
+    );
+
+    expect(response.status).toBe(200);
+
+    const responseBody: unknown = response.body;
+
+    const loadedFlow = flowSchema.extend({
+      graph: workflowGraphSchema,
+    }).parse(responseBody);
+
+    expect(loadedFlow.graph).toEqual({
+      ...legacyGraph,
+      nodes: [
+        legacyGraph.nodes[0],
+        {
+          ...legacyGraph.nodes[1],
+          data: {},
+        },
+      ],
+    });
+  });
+
+  it("loads a newly created flow with a null graph", async () => {
+    const createResponse = await request(app)
+      .post("/flows")
+      .send({ name: "New Empty Flow" });
+
+    expect(createResponse.status).toBe(201);
+
+    const createdFlow = trackCreatedFlow(createResponse.body);
+
+    const getResponse = await request(app).get(
+      `/flows/${createdFlow.id}`,
+    );
+
+    expect(getResponse.status).toBe(200);
+
+    const responseBody: unknown = getResponse.body;
+
+    const loadedFlow = flowSchema.extend({
+      graph: workflowGraphSchema.nullable(),
+    }).parse(responseBody);
+
+    expect(loadedFlow.id).toBe(createdFlow.id);
+    expect(loadedFlow.graph).toBeNull();
   });
 
   it("returns 404 when saving a graph to a nonexistent flow", async () => {

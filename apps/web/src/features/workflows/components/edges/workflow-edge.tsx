@@ -17,6 +17,8 @@ export type WorkflowEdgeStatus =
 export type WorkflowEdgeData = {
   color?: string;
   status?: WorkflowEdgeStatus;
+  // Display-only: the edge targets an inactive Prompt Template port.
+  inactive?: boolean;
 };
 
 export type WorkflowEdgeType = Edge<
@@ -54,9 +56,11 @@ export function WorkflowEdge({
   });
 
   const status = data?.status ?? "idle";
+  const inactive = data?.inactive ?? false;
 
-  const color =
-    status === "idle" || status === "running"
+  const color = inactive
+    ? "var(--muted-foreground)"
+    : status === "idle" || status === "running"
       ? (data?.color ?? "#8b5cf6")
       : statusColors[status];
 
@@ -64,6 +68,7 @@ export function WorkflowEdge({
     <g
       className="workflow-edge"
       data-status={status}
+      data-inactive={inactive}
       data-selected={selected}
       style={
         {

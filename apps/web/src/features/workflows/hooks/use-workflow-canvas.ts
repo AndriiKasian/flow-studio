@@ -2,9 +2,11 @@
 
 import {
   useCallback,
+  useLayoutEffect,
   useRef,
   useState,
   type DragEvent,
+  type RefObject,
 } from "react";
 
 import {
@@ -17,7 +19,9 @@ import {
   type OnConnectEnd,
   type Node,
 } from "@xyflow/react";
+
 import type { WorkflowGraph } from "@flow-studio/shared";
+
 import { NODE_DEFINITIONS } from "../lib/node-definitions";
 
 import {
@@ -35,8 +39,14 @@ import {
 
 import type { WorkflowEdgeType } from "../components/edges/workflow-edge";
 
+export interface WorkflowCanvasGraph {
+  nodes: Node[];
+  edges: Edge[];
+}
+
 export function useWorkflowCanvas(
   initialGraph: WorkflowGraph | null,
+  graphRef: RefObject<WorkflowCanvasGraph>,
 ) {
   const [nodes, setNodes, onNodesChange] =
     useNodesState<Node>(initialGraph?.nodes ?? initialNodes);
@@ -45,6 +55,12 @@ export function useWorkflowCanvas(
     useEdgesState<WorkflowEdgeType>(
       initialGraph?.edges ?? initialEdges,
     );
+
+  // Exposes the canonical graph to editor actions without lifting state:
+  // React Flow's getNodes() returns display projections with runtime data.
+  useLayoutEffect(() => {
+    graphRef.current = { nodes, edges };
+  }, [graphRef, nodes, edges]);
 
   const [connectionError, setConnectionError] =
     useState<ConnectionError | null>(null);

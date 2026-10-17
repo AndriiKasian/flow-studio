@@ -17,10 +17,11 @@ export {
   type WorkflowNodeType,
 } from "./workflow-graph";
 
-export { WORKFLOW_HANDLES } from "./workflow-handles";
+export { WORKFLOW_HANDLES, extractPromptVariables } from "./workflow-handles";
 
 export {
   isWorkflowNodeType,
+  isActiveInputHandle,
   validateWorkflowConnection,
   validateImportedWorkflowGraph,
   type ConnectionError,
@@ -30,3 +31,11 @@ export {
 } from "./workflow-connection";
 
 export type { WorkflowExecutionEvent } from "./workflow-execution-events";
+
+export { normalizeWorkflowGraph } from './workflow-graph-normalization';
+
+export {
+  getActivePromptTemplateInputs,
+  syncPromptTemplateInputs,
+  type PromptTemplateInput
+} from "./prompt-template-inputs";

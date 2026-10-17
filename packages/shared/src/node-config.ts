@@ -1,4 +1,3 @@
-
 import { z } from "zod";
 
 export const userInputDataSchema = z.strictObject({
@@ -10,8 +9,14 @@ export const textInputDataSchema = z.strictObject({
   text: z.string().optional(),
 });
 
+export const promptTemplateInputSchema = z.strictObject({
+  id: z.string().min(1),
+  name: z.string().regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/),
+});
+
 export const promptTemplateDataSchema = z.strictObject({
   template: z.string().optional(),
+  inputs: z.array(promptTemplateInputSchema).optional(),
 });
 
 export const llmDataSchema = z.strictObject({
@@ -28,6 +33,4 @@ export const textTransformDataSchema = z.strictObject({
     .optional(),
 });
 
-export const textOutputDataSchema = z.strictObject({
-  result: z.string().optional(),
-});
+export const textOutputDataSchema = z.strictObject({});
