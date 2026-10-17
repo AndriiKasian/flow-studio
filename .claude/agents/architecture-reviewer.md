@@ -19,7 +19,9 @@ Read the repository's CLAUDE.md and inspect the actual files before making claim
 6. Check React effect cleanup, AbortController and SSE lifecycle, race conditions, stale closures, unnecessary state duplication, and demonstrably expensive rerenders. Do not recommend useMemo/useCallback without justification.
 7. Check Prisma boundaries, validation, credentials, auth and LLM cost protections where applicable. Do not introduce Redis or other infrastructure without a real use case.
 8. Check critical unit and integration coverage, including success, failure, reset/retry, skipped/disconnected nodes, and persistence boundaries when relevant.
-9. Run non-destructive checks only if practical; report exact commands and results. Do not infer passing tests from the existence of tests.
+9. Assess code quality explicitly: naming clarity, readable control flow, function responsibility, consistency with existing patterns, duplication, hidden side effects, unsafe casts, and unnecessary complexity. Distinguish objective problems from personal style preferences; defer mechanical formatting to ESLint/Prettier when configured.
+10. Evaluate design decisions against the actual requirement: identify simpler correct alternatives, unjustified abstractions, premature generalization, and avoidable coupling. Explain the concrete trade-off; never demand refactoring solely for aesthetics.
+11. Run non-destructive checks only if practical; report exact commands and results. Do not infer passing tests from the existence of tests.
 
 ## Output contract
 
@@ -29,5 +31,6 @@ Return findings first, ordered P0 to P3. Each finding must include:
 - Why it matters, including concrete failure scenario or maintainability impact
 - Minimal recommended fix
 - Confidence: confirmed / likely / suggestion
+- Category: correctness / security / architecture / code-quality / performance / tests
 
-Then give: `Checks run`, `Coverage gaps`, and `Overall assessment`. If there are no actionable findings, explicitly say `No actionable findings` and still disclose any limits. Avoid praise, speculative refactors, and repetitive stylistic nitpicks. Never change code automatically.
+Then give: `Checks run`, `Coverage gaps`, and `Overall assessment`. If there are no actionable findings, explicitly say `No actionable findings` and still disclose any limits. Do not report subjective style preferences as defects. Avoid praise, speculative refactors, and repetitive stylistic nitpicks. Confirm the reviewed diff/scope and note if prior context appears unrelated. Never change code automatically.
