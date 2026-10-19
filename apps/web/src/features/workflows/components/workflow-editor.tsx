@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { ReactFlowProvider } from "@xyflow/react";
+import {
+  ReactFlowProvider,
+  useReactFlow,
+  useStore,
+} from "@xyflow/react";
 import type { Flow, WorkflowGraph } from "@flow-studio/shared";
 
 import { Button } from "@/components/ui/button";
@@ -33,6 +37,14 @@ interface WorkflowEditorProps {
 }
 
 function WorkflowEditorContent({ flow }: WorkflowEditorProps) {
+  const { setNodes, setEdges } = useReactFlow();
+
+  const isCanvasEmpty = useStore(
+    (state) => state.nodes.length === 0 && state.edges.length === 0,
+  );
+
+  const [isClearCanvasOpen, setIsClearCanvasOpen] = useState(false);
+
   const {
     message,
     variant,
@@ -100,6 +112,25 @@ function WorkflowEditorContent({ flow }: WorkflowEditorProps) {
     isRunning,
   });
 
+  const handleRequestClearCanvas = () => {
+    if (isRunning || isSaving || isCanvasEmpty) return;
+
+    setIsClearCanvasOpen(true);
+  };
+
+  const handleConfirmClearCanvas = () => {
+    if (isRunning || isSaving || isCanvasEmpty) return;
+
+    setNodes([]);
+    setEdges([]);
+    fitViewRequestRef.current = null;
+    resetExecution();
+    clearMessage();
+
+    setIsClearCanvasOpen(false);
+    showSuccess("Canvas cleared. Click Save to persist.");
+  };
+
   const handleClearExecution = () => {
     if (isRunning) return;
 
@@ -116,6 +147,8 @@ function WorkflowEditorContent({ flow }: WorkflowEditorProps) {
         onImport={handleImport}
         onRun={handleRun}
         onClearExecution={handleClearExecution}
+        onClearCanvas={handleRequestClearCanvas}
+        isCanvasEmpty={isCanvasEmpty}
         isSaving={isSaving}
         isRunning={isRunning}
       />
@@ -176,6 +209,43 @@ function WorkflowEditorContent({ flow }: WorkflowEditorProps) {
               className="cursor-pointer disabled:cursor-not-allowed"
             >
               Import workflow
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isClearCanvasOpen}
+        onOpenChange={setIsClearCanvasOpen}
+      >
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Clear the entire canvas?</DialogTitle>
+            <DialogDescription>
+              This removes all nodes and connections from the editor.
+              Nothing is deleted from the database until you click Save.
+              Reload without saving to restore the saved workflow.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsClearCanvasOpen(false)}
+              className="cursor-pointer"
+            >
+              Cancel
+            </Button>
+
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleConfirmClearCanvas}
+              disabled={isRunning || isSaving || isCanvasEmpty}
+              className="cursor-pointer disabled:cursor-not-allowed"
+            >
+              Clear Canvas
             </Button>
           </DialogFooter>
         </DialogContent>

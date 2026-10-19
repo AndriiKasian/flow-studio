@@ -1,6 +1,6 @@
 # Flow Studio
 
-Flow Studio is a visual workflow builder for creating and executing AI-powered workflows.
+Flow Studio is a visual workflow builder for configuring and executing AI-powered workflows. The project is under active development.
 
 ## Project Structure
 
@@ -116,7 +116,10 @@ apps/web/src/
 ├── features/
 │   └── workflows/
 │       ├── actions/
-│       └── components/
+│       ├── components/
+│       ├── hooks/
+│       ├── lib/
+│       └── styles/
 ├── lib/
 └── providers/
 ```
@@ -264,16 +267,17 @@ The current frontend supports:
 - ordering workflows by `updatedAt` descending;
 - opening persisted workflows in the Flow Editor.
 
-The current Flow Editor foundation supports:
+The current Flow Editor supports:
 
-- dynamic `/workflows/[id]` routing;
-- loading workflow metadata through `GET /flows/:id`;
+- dynamic `/workflows/[id]` routing and workflow loading via `GET /flows/:id`;
 - not-found handling for missing workflows;
-- a full-screen editor shell;
-- a node-library sidebar foundation;
-- an interactive React Flow canvas;
-- pan and zoom;
-- canvas background and controls;
+- a full-screen editor with node-library sidebar;
+- six node UIs with editable configuration;
+- React Flow pan, zoom, drag-and-drop, connection and deletion;
+- typed connections and shared validation;
+- saving/loading the graph, importing/exporting JSON;
+- running the current unsaved graph with SSE execution visualization;
+- Reset Execution and confirmation-based Clear Canvas;
 - synchronized light/dark theme behavior.
 
 The workflows dashboard and editor route are dynamically rendered on demand because workflow data is runtime API data and must not be fetched during the Next.js production build.
@@ -322,22 +326,24 @@ If a check fails, fix the underlying issue rather than suppressing the rule unle
 
 ## Current Product State (October 2026)
 
-Implemented: workflow CRUD and persistence, React Flow editor, node palette and typed connections, shared graph validation, JSON import/export, Text Input / Prompt Template / Text Transform / Text Output executors, Prompt Template dynamic input ports with stable IDs and inactive connection preservation, execution of the current unsaved canvas graph, disconnected-node exclusion, fail-fast execution with skipped remaining nodes, SSE streaming, canvas node/edge statuses, client-side animation, runtime Text Output results, and Clear. Execution outputs and status are ephemeral and must never be persisted with graph data.
+Implemented: workflow CRUD and PostgreSQL persistence, React Flow editor, six configurable node UIs, node palette and typed connections, shared graph validation, JSON import/export, Text Input / Prompt Template / Text Transform / Text Output executors, Prompt Template dynamic input ports with stable IDs and inactive connection preservation, execution of the current unsaved canvas graph, disconnected-node exclusion, fail-fast execution with skipped remaining nodes, SSE streaming, canvas node/edge statuses, client-side animation, runtime Text Output results, Reset Execution, and Clear Canvas. Execution outputs and status are ephemeral and must never be persisted with graph data.
 
-Not yet implemented: LLM provider execution, authentication (email/password and Google OAuth), Redis-based LLM rate limiting, public deployment. The V1 roadmap remains: node configuration; workflow execution with branching; SSE/canvas visualization; LLM; authentication; deployment/CI; tests/UX/README/demo. Earlier stages may be refined, but do not reorder or silently remove roadmap stages.
+Not yet implemented: User Input runtime execution (its node UI and shared data schema exist), LLM provider execution (its node UI and shared data schema exist), authentication (email/password and Google OAuth), Redis-based LLM rate limiting, public deployment. The V1 roadmap remains: node configuration; workflow execution with branching; SSE/canvas visualization; LLM; authentication; deployment/CI; tests/UX/README/demo. Earlier stages may be refined, but do not reorder or silently remove roadmap stages.
 
 There is no right-hand Execution Monitor / Node Details panel in V1. Show execution state on canvas, Text Output results in its node, and errors in toast. Do not reintroduce a monitor without an explicit product decision.
 
 ## Flow Editor Direction
 
-The V1 node set is intentionally limited to:
+The V1 node set is intentionally limited to six node types:
 
-- Input;
-- AI;
-- Transform;
-- Output.
+- User Input (UI/configuration exists; runtime executor pending);
+- Text Input;
+- Prompt Template;
+- LLM (UI/configuration exists; provider executor pending);
+- Text Transform;
+- Text Output.
 
-Avoid expanding the node model prematurely.
+The node library groups these into Input, AI, Transform, and Output categories. Avoid expanding the node model prematurely.
 
 ### Execution Architecture and Visualization
 
@@ -347,7 +353,9 @@ Avoid expanding the node model prematurely.
 - `WorkflowExecutionEvent` is a shared contract in `packages/shared`. The backend emits `flow:start`, `node:start`, `node:stop` (including outputs for completed nodes), and `flow:stop`. Do not invent `node:delta` as already implemented.
 - Frontend execution state and animation are ephemeral. Runtime status and outputs are applied to display-only node/edge projections, not persisted graph nodes.
 - Node statuses are `idle`, `running`, `completed`, `failed`, `skipped`. The frontend owns minimum animation timing; backend must not add fake delays.
-- Text Output displays runtime `outputs.result`; Clear and a new Run reset runtime state without erasing node configuration.
+- Text Output displays runtime `outputs.result`; Reset Execution and a new Run reset runtime state without erasing node configuration.
+- Clear Canvas requires confirmation and removes all nodes and edges locally. It does not persist until Save; reloading without saving restores the last persisted graph. Disable Clear Canvas when the canvas is empty, while running, or while saving.
+- Import validates JSON against the shared workflow graph schema. Import into an empty canvas applies immediately; importing into a non-empty canvas requires confirmation. Import does not automatically save. Export serializes the current graph configuration, not runtime execution results.
 - Prefer focused hooks and pure helpers to a monolithic workflow editor, but do not extract abstractions solely to reduce line count.
 
 ## Claude Code Review Workflow
@@ -362,6 +370,13 @@ Avoid expanding the node model prematurely.
 - Recommend memoization and design patterns only when there is a concrete benefit. Avoid premature abstractions and speculative refactors.
 - Classify findings P0 (critical), P1 (high), P2 (medium), P3 (low); include file:line, evidence, impact, and the smallest coherent fix. Distinguish verified defects from risks and suggestions. If there are no findings, say so.
 - Prefer deterministic checks: `pnpm typecheck`, `pnpm lint`, `pnpm -r --if-present test`, then builds when appropriate. Report checks actually run, never claim unrun checks passed.
+
+## Development Continuity
+
+- Work incrementally and inspect the actual files before editing. Preserve settled architectural and product decisions; distinguish an agreed decision from a new proposal.
+- When supplying code changes for review, prefer the complete updated file with its repository path, one file at a time.
+- Verify implementation with relevant automated checks and manual scenarios, then run read-only `/review-changes`, resolve material findings, and only then commit/push.
+- Do not claim an implementation is tested or deployed without evidence.
 
 ## Commands
 

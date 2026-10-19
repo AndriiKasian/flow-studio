@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useReactFlow } from "@xyflow/react";
 import type { WorkflowGraph } from "@flow-studio/shared";
 
@@ -35,6 +35,28 @@ export function useWorkflowFileActions({
     useState<WorkflowGraph | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Keep the latest execution state available to async callbacks.
+  const isRunningRef = useRef(isRunning);
+
+  useEffect(() => {
+    isRunningRef.current = isRunning;
+  }, [isRunning]);
+
+  const applyImportedGraph = useCallback(
+    (graph: WorkflowGraph) => {
+      onGraphImported(graph);
+
+      setNodes(graph.nodes);
+      setEdges(graph.edges);
+      setPendingImport(null);
+
+      onSuccess(
+        "Workflow imported successfully. Click Save to persist.",
+      );
+    },
+    [onGraphImported, setNodes, setEdges, onSuccess],
+  );
 
   const handleSave = useCallback(async () => {
     if (isSaving) return;
@@ -92,10 +114,10 @@ export function useWorkflowFileActions({
   }, [getNodes, getEdges, flowId, onError]);
 
   const handleImport = useCallback(() => {
-    if (isRunning) return;
+    if (isRunningRef.current) return;
 
     fileInputRef.current?.click();
-  }, [isRunning]);
+  }, []);
 
   const handleImportFileChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
@@ -105,11 +127,30 @@ export function useWorkflowFileActions({
 
       if (!file) return;
 
+      if (isRunningRef.current) {
+        onError("Cannot import while a workflow is running.");
+        return;
+      }
+
       onStart();
 
       try {
         const graph = await importWorkflowFromFile(file);
-        setPendingImport(graph);
+
+        // Execution may have started while the file was loading.
+        if (isRunningRef.current) {
+          onError("Cannot import while a workflow is running.");
+          return;
+        }
+
+        const isCanvasEmpty =
+          getNodes().length === 0 && getEdges().length === 0;
+
+        if (isCanvasEmpty) {
+          applyImportedGraph(graph);
+        } else {
+          setPendingImport(graph);
+        }
       } catch (error) {
         onError(
           error instanceof Error
@@ -118,29 +159,14 @@ export function useWorkflowFileActions({
         );
       }
     },
-    [onStart, onError],
+    [onStart, onError, getNodes, getEdges, applyImportedGraph],
   );
 
   const handleConfirmImport = useCallback(() => {
-    if (!pendingImport || isRunning) return;
+    if (!pendingImport || isRunningRef.current) return;
 
-    onGraphImported(pendingImport);
-
-    setNodes(pendingImport.nodes);
-    setEdges(pendingImport.edges);
-    setPendingImport(null);
-
-    onSuccess(
-      "Workflow imported successfully. Click Save to persist.",
-    );
-  }, [
-    pendingImport,
-    isRunning,
-    onGraphImported,
-    setNodes,
-    setEdges,
-    onSuccess,
-  ]);
+    applyImportedGraph(pendingImport);
+  }, [pendingImport, applyImportedGraph]);
 
   return {
     isSaving,

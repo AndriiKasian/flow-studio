@@ -4,6 +4,7 @@ import {
   Download,
   Play,
   RotateCcw,
+  Trash2,
   Save,
   Upload,
 } from "lucide-react";
@@ -20,8 +21,10 @@ interface WorkflowEditorHeaderProps {
   onImport: () => void;
   onRun: () => void;
   onClearExecution: () => void;
+  onClearCanvas: () => void;
   isSaving: boolean;
   isRunning: boolean;
+  isCanvasEmpty: boolean;
 }
 
 export function WorkflowEditorHeader({
@@ -31,8 +34,10 @@ export function WorkflowEditorHeader({
   onImport,
   onRun,
   onClearExecution,
+  onClearCanvas,
   isSaving,
   isRunning,
+  isCanvasEmpty
 }: WorkflowEditorHeaderProps) {
   return (
     <header className="border-border/60 bg-background/95 flex h-16 shrink-0 items-center border-b backdrop-blur">
@@ -99,10 +104,22 @@ export function WorkflowEditorHeader({
             onClick={onClearExecution}
             disabled={isRunning}
             className="cursor-pointer disabled:cursor-not-allowed"
-            title="Clear execution statuses"
+            title="Reset execution highlights and results"
           >
             <RotateCcw className="size-4" />
-            Clear
+            Reset Execution
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onClearCanvas}
+            disabled={isRunning || isSaving || isCanvasEmpty}
+            className="cursor-pointer disabled:cursor-not-allowed"
+            title="Remove all nodes and connections (not saved automatically)"
+          >
+            <Trash2 className="size-4" />
+            Clear Canvas
           </Button>
 
           <Button
