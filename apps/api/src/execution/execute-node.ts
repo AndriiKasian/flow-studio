@@ -23,7 +23,8 @@ type NodeExecutor = (
 
 const MAX_PUBLIC_OUTPUT_LENGTH = 20_000;
 
-const PUBLIC_NODE_TYPES = new Set<WorkflowNodeType>([
+// Deterministic, free node types allowed in public workflow execution.
+export const PUBLIC_NODE_TYPES: ReadonlySet<WorkflowNodeType> = new Set<WorkflowNodeType>([
   "textInput",
   "textTransform",
   "promptTemplate",

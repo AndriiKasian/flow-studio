@@ -272,7 +272,7 @@ The current Flow Editor supports:
 - dynamic `/workflows/[id]` routing and workflow loading via `GET /flows/:id`;
 - not-found handling for missing workflows;
 - a full-screen editor with node-library sidebar;
-- six node UIs with editable configuration;
+- node UIs with editable configuration for the V1 node set;
 - React Flow pan, zoom, drag-and-drop, connection and deletion;
 - typed connections and shared validation;
 - saving/loading the graph, importing/exporting JSON;
@@ -280,7 +280,7 @@ The current Flow Editor supports:
 - Reset Execution and confirmation-based Clear Canvas;
 - synchronized light/dark theme behavior.
 
-The workflows dashboard and editor route are dynamically rendered on demand because workflow data is runtime API data and must not be fetched during the Next.js production build.
+The workflows dashboard, editor and demo routes are dynamically rendered on demand because workflow data is runtime API data and must not be fetched during the Next.js production build.
 
 ## Testing
 
@@ -326,22 +326,31 @@ If a check fails, fix the underlying issue rather than suppressing the rule unle
 
 ## Current Product State (October 2026)
 
-Implemented: workflow CRUD and PostgreSQL persistence, React Flow editor, six configurable node UIs, node palette and typed connections, shared graph validation, JSON import/export, Text Input / Prompt Template / Text Transform / Text Output executors, Prompt Template dynamic input ports with stable IDs and inactive connection preservation, execution of the current unsaved canvas graph, disconnected-node exclusion, fail-fast execution with skipped remaining nodes, SSE streaming, canvas node/edge statuses, client-side animation, runtime Text Output results, Reset Execution, and Clear Canvas. Execution outputs and status are ephemeral and must never be persisted with graph data.
+Implemented: workflow CRUD and PostgreSQL persistence, React Flow editor, configurable node UIs, node palette and typed connections, shared graph validation, JSON import/export, Text Input / Prompt Template / Text Transform / Text Output / JSON Output / LLM (OpenAI) / Web Search (Serper) executors, Prompt Template dynamic input ports with stable IDs and inactive connection preservation, execution of the current unsaved canvas graph, disconnected-node exclusion, fail-fast execution with skipped remaining nodes, SSE streaming, canvas node/edge statuses, client-side animation, runtime Text Output results, Reset Execution, Clear Canvas, and the protected read-only Demo. Execution outputs and status are ephemeral and must never be persisted with graph data.
 
-Not yet implemented: User Input runtime execution (its node UI and shared data schema exist), LLM provider execution (its node UI and shared data schema exist), authentication (email/password and Google OAuth), Redis-based LLM rate limiting, public deployment. The V1 roadmap remains: node configuration; workflow execution with branching; SSE/canvas visualization; LLM; authentication; deployment/CI; tests/UX/README/demo. Earlier stages may be refined, but do not reorder or silently remove roadmap stages.
+Agreed product scope:
+
+- **Public workflow editor.** Workflows are shared and have no ownership or authentication. A maximum of 10 workflows can exist (`MAX_WORKFLOWS`, enforced transactionally in `createFlow`; the API returns 409 when the limit is reached).
+- **Paid nodes are disabled for public workflows in production.** LLM and Web Search are hidden from the production node library, and outside local development the flow execute endpoints accept only the deterministic, free `PUBLIC_NODE_TYPES` within bounded graph size. Locally, paid nodes additionally require `ALLOW_PAID_FLOW_NODES=true`.
+- **Protected read-only Demo.** `/workflows/demo` shows a fixed server-defined workflow (including LLM and Web Search) that visitors can run but not edit. The browser calls the Next.js `/api/demo/run` route, which forwards to the API with a trusted-proxy secret. The API demo endpoint rejects requests without that secret and applies a per-IP rate limit, a concurrency cap and a PostgreSQL-backed daily quota. Demo failures are shown with generic messages; the editor shows curated, actionable node errors, and unexpected exceptions are masked.
+- **Deployment target:** Vercel (web), Render (API) and Neon (PostgreSQL). Rate limiting and the demo concurrency cap are in-memory and assume a single API instance.
+
+Not yet implemented: User Input runtime execution (its node UI and shared data schema exist; it is hidden from the node library), authentication (email/password and Google OAuth), public deployment. The V1 roadmap remains: node configuration; workflow execution with branching; SSE/canvas visualization; LLM; authentication; deployment/CI; tests/UX/README/demo. Earlier stages may be refined, but do not reorder or silently remove roadmap stages.
 
 There is no right-hand Execution Monitor / Node Details panel in V1. Show execution state on canvas, Text Output results in its node, and errors in toast. Do not reintroduce a monitor without an explicit product decision.
 
 ## Flow Editor Direction
 
-The V1 node set is intentionally limited to six node types:
+The V1 node set is intentionally limited to eight node types:
 
-- User Input (UI/configuration exists; runtime executor pending);
+- User Input (UI/configuration exists; runtime executor pending; hidden from the node library);
 - Text Input;
+- Web Search (paid; hidden in production);
 - Prompt Template;
-- LLM (UI/configuration exists; provider executor pending);
+- LLM (paid; hidden in production);
 - Text Transform;
-- Text Output.
+- Text Output;
+- JSON Output.
 
 The node library groups these into Input, AI, Transform, and Output categories. Avoid expanding the node model prematurely.
 

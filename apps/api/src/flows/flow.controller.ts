@@ -10,7 +10,9 @@ import {
   type WorkflowNodeType,
 } from "@flow-studio/shared";
 
+import { PUBLIC_NODE_TYPES } from "../execution/execute-node.js";
 import { executeWorkflow } from "../execution/execute-workflow.js";
+import { SSE_RESPONSE_HEADERS } from "../lib/sse.js";
 import { isLocalEnvironment } from "../lib/environment.js";
 import { logError } from "../lib/error-diagnostics.js";
 import {
@@ -18,6 +20,7 @@ import {
   deleteFlow,
   getFlowById,
   getFlows,
+  MAX_WORKFLOWS,
   updateFlow,
   saveFlowGraph,
 } from "./flow.service.js";
@@ -75,7 +78,7 @@ export async function createFlowController(
 
   if (!flow) {
     return res.status(409).json({
-      error: "Workflow limit reached (10).",
+      error: `Workflow limit reached (${MAX_WORKFLOWS}).`,
     });
   }
 
@@ -328,12 +331,7 @@ export async function executeFlowStreamController(
   };
 
   try {
-    res.set({
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no",
-    });
+    res.set(SSE_RESPONSE_HEADERS);
 
     res.flushHeaders();
 
@@ -383,24 +381,20 @@ function sendPaidNodesDisabled(res: Response) {
   });
 }
 
-// Production sandbox: deterministic, free nodes only.
-const PUBLIC_NODE_TYPES = new Set([
-  "textInput",
-  "promptTemplate",
-  "textTransform",
-  "textOutput",
-  "jsonOutput",
-]);
+// Production sandbox: deterministic, free nodes and bounded graph size only.
+const MAX_PUBLIC_GRAPH_NODES = 30;
+const MAX_PUBLIC_GRAPH_EDGES = 60;
+const MAX_PUBLIC_GRAPH_JSON_LENGTH = 12_000;
 
 function isSafePublicGraph(
   graph: WorkflowGraph,
 ): boolean {
   return (
-    graph.nodes.length <= 30 &&
-    graph.edges.length <= 60 &&
+    graph.nodes.length <= MAX_PUBLIC_GRAPH_NODES &&
+    graph.edges.length <= MAX_PUBLIC_GRAPH_EDGES &&
     graph.nodes.every((node) =>
       PUBLIC_NODE_TYPES.has(node.type),
     ) &&
-    JSON.stringify(graph).length <= 12_000
+    JSON.stringify(graph).length <= MAX_PUBLIC_GRAPH_JSON_LENGTH
   );
 }

@@ -167,7 +167,7 @@ The agreed V1 roadmap order is:
 3. SSE & canvas execution visualization.
 4. LLM integration.
 5. Authentication (email/password and Google OAuth).
-6. Deployment and CI (Vercel/Railway/PostgreSQL; GitHub Actions CI already exists).
+6. Deployment and CI (Vercel web, Render API, Neon PostgreSQL; GitHub Actions CI already exists).
 7. Tests, UX, README, and public demo.
 
 Earlier stages may be refined as work progresses; the list describes the planned delivery order, **not** a claim that every stage is fully complete. Authentication, public deployment, and live LLM execution are not yet available.

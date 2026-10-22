@@ -18,9 +18,12 @@ import {
 export const flowRouter = Router();
 
 // Limit public mutations and executions per visitor; GET remains unrestricted.
+const PUBLIC_WRITE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const PUBLIC_WRITES_PER_WINDOW = 30;
+
 const publicWriteLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 30,
+  windowMs: PUBLIC_WRITE_LIMIT_WINDOW_MS,
+  limit: PUBLIC_WRITES_PER_WINDOW,
   standardHeaders: "draft-8",
   legacyHeaders: false,
   keyGenerator: clientIpRateLimitKey,

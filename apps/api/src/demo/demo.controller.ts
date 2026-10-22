@@ -6,6 +6,7 @@ import type { Request, Response } from "express";
 
 import { executeWorkflow } from "../execution/execute-workflow.js";
 import { logError } from "../lib/error-diagnostics.js";
+import { SSE_RESPONSE_HEADERS } from "../lib/sse.js";
 import {
   releaseDemoRun,
   tryAcquireDemoRun,
@@ -90,12 +91,7 @@ export async function runDemoWorkflowController(
       return;
     }
 
-    res.set({
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no",
-    });
+    res.set(SSE_RESPONSE_HEADERS);
 
     res.flushHeaders();
 

@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server";
 
 import { buildTrustedProxyHeaders } from "@/lib/trusted-proxy";
+import {
+  CLIENT_CLOSED_REQUEST_STATUS,
+  SSE_RESPONSE_HEADERS,
+} from "@/lib/sse-proxy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,15 +67,13 @@ export async function POST(
 
     return new Response(response.body, {
       status: 200,
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache, no-transform",
-        "X-Accel-Buffering": "no",
-      },
+      headers: SSE_RESPONSE_HEADERS,
     });
   } catch (error) {
     if (request.signal.aborted) {
-      return new Response(null, { status: 499 });
+      return new Response(null, {
+        status: CLIENT_CLOSED_REQUEST_STATUS,
+      });
     }
 
     console.error("Failed to proxy workflow execution:", error);

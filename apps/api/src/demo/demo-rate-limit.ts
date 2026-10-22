@@ -10,9 +10,12 @@ type RateLimitedRequest = Request & {
   };
 };
 
+const DEMO_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const DEMO_RUNS_PER_WINDOW = 3;
+
 export const demoRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 3,
+  windowMs: DEMO_RATE_LIMIT_WINDOW_MS,
+  limit: DEMO_RUNS_PER_WINDOW,
   standardHeaders: "draft-8",
   legacyHeaders: false,
   keyGenerator: clientIpRateLimitKey,
