@@ -1,3 +1,4 @@
+
 import type { WorkflowNodeType } from "./workflow-graph";
 
 interface NodeHandles {
@@ -12,6 +13,8 @@ export const WORKFLOW_HANDLES = {
   llm: { inputs: ["prompt"], outputs: ["response"] },
   textTransform: { inputs: ["input"], outputs: ["output"] },
   textOutput: { inputs: ["input"], outputs: [] },
+  webSearch: { inputs: ["query"], outputs: ["results"] },
+  jsonOutput: { inputs: ["input"], outputs: [] },
 } as const satisfies Record<WorkflowNodeType, NodeHandles>;
 
 /**

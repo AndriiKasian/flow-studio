@@ -1,6 +1,9 @@
+import { rateLimit } from "express-rate-limit";
 
 import { Router } from "express";
 
+import { isLocalEnvironment } from "../lib/environment.js";
+import { clientIpRateLimitKey } from "../lib/trusted-proxy.js";
 import {
   createFlowController,
   deleteFlowController,
@@ -13,6 +16,22 @@ import {
 } from "./flow.controller.js";
 
 export const flowRouter = Router();
+
+// Limit public mutations and executions per visitor; GET remains unrestricted.
+const publicWriteLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  keyGenerator: clientIpRateLimitKey,
+});
+flowRouter.use((req, res, next) => {
+  if (isLocalEnvironment() || req.method === "GET") {
+    next();
+    return;
+  }
+  publicWriteLimit(req, res, next);
+});
 
 flowRouter.post("/", createFlowController);
 flowRouter.get("/", getFlowsController);

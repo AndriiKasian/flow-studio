@@ -225,5 +225,4 @@ describe("Flows API - Execution", () => {
 
     expect(storedFlow?.graph).toEqual(legacyGraph);
   });
-
 });

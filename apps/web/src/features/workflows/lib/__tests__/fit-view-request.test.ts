@@ -1,8 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   createFitViewRequest,
   getFitViewDecision,
+  processFitViewRequest,
+  type FitViewRequest,
 } from "../fit-view-request";
 
 const nodes = [{ id: "a" }, { id: "b" }];
@@ -46,5 +48,72 @@ describe("getFitViewDecision", () => {
 
   it("discards the request when a node is removed before it fits", () => {
     expect(getFitViewDecision(request, ["a"], false)).toBe("discard");
+  });
+});
+
+describe("processFitViewRequest", () => {
+  function createRequestRef(): { current: FitViewRequest | null } {
+    return { current: createFitViewRequest(nodes, true) };
+  }
+
+  it("keeps the request while nodes are being measured", () => {
+    const requestRef = createRequestRef();
+    const fitView = vi.fn(() => Promise.resolve());
+    const onComplete = vi.fn();
+
+    processFitViewRequest(requestRef, ["a", "b"], false, fitView, onComplete);
+
+    expect(requestRef.current).not.toBeNull();
+    expect(fitView).not.toHaveBeenCalled();
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it("completes once even when re-run before fitting settles", async () => {
+    const requestRef = createRequestRef();
+    let resolveFit: () => void = () => {};
+    const fitView = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveFit = resolve;
+        }),
+    );
+    const onComplete = vi.fn();
+
+    processFitViewRequest(requestRef, ["a", "b"], true, fitView, onComplete);
+    // A re-render re-runs the effect while fitView is still animating.
+    processFitViewRequest(requestRef, ["a", "b"], true, fitView, onComplete);
+
+    expect(fitView).toHaveBeenCalledTimes(1);
+    expect(onComplete).not.toHaveBeenCalled();
+
+    resolveFit();
+    await vi.waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1));
+  });
+
+  it("completes when fitting fails", async () => {
+    const fitView = vi.fn(() => Promise.reject(new Error("fit failed")));
+    const onComplete = vi.fn();
+
+    processFitViewRequest(
+      createRequestRef(),
+      ["a", "b"],
+      true,
+      fitView,
+      onComplete,
+    );
+
+    await vi.waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1));
+  });
+
+  it("completes without fitting when the request is discarded", () => {
+    const requestRef = createRequestRef();
+    const fitView = vi.fn(() => Promise.resolve());
+    const onComplete = vi.fn();
+
+    processFitViewRequest(requestRef, ["a"], true, fitView, onComplete);
+
+    expect(requestRef.current).toBeNull();
+    expect(fitView).not.toHaveBeenCalled();
+    expect(onComplete).toHaveBeenCalledTimes(1);
   });
 });

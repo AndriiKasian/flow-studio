@@ -1,4 +1,3 @@
-
 import { workflowGraphSchema } from "@flow-studio/shared";
 import { describe, expect, it } from "vitest";
 
@@ -45,9 +44,7 @@ describe("workflowGraphSchema", () => {
 
   it("preserves valid LLM configuration", () => {
     const node = createNode("llm", {
-      model: "claude-sonnet",
       systemPrompt: "You are a helpful assistant.",
-      temperature: 0.7,
     });
 
     const result = workflowGraphSchema.parse({
@@ -58,11 +55,12 @@ describe("workflowGraphSchema", () => {
     expect(result.nodes[0]?.data).toEqual(node.data);
   });
 
-  it("rejects invalid LLM temperature", () => {
+  it("rejects unsupported LLM configuration fields", () => {
     const result = workflowGraphSchema.safeParse({
       nodes: [
         createNode("llm", {
-          temperature: "high",
+          model: "claude-sonnet",
+          temperature: 0.7,
         }),
       ],
       edges: [],

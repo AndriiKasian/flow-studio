@@ -13,6 +13,8 @@ import { PromptTemplateNode } from "../components/nodes/prompt-template-node";
 import { LlmNode } from "../components/nodes/llm-node";
 import { TextTransformNode } from "../components/nodes/text-transform-node";
 import { TextOutputNode } from "../components/nodes/text-output-node";
+import { WebSearchNode } from "../components/nodes/web-search-node";
+import { JsonOutputNode } from "../components/nodes/json-output-node";
 
 export const NODE_DRAG_TYPE = "application/flow-studio-node";
 
@@ -26,8 +28,10 @@ export const nodeTypes = {
   textInput: TextInputNode,
   promptTemplate: PromptTemplateNode,
   llm: LlmNode,
+  webSearch: WebSearchNode,
   textTransform: TextTransformNode,
   textOutput: TextOutputNode,
+  jsonOutput: JsonOutputNode,
 } satisfies Record<WorkflowNodeType, NodeTypes[string]>;
 
 export const edgeTypes = {

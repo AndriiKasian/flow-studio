@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 
+import { buildTrustedProxyHeaders } from "@/lib/trusted-proxy";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -32,6 +34,10 @@ export async function POST(
         headers: {
           Accept: "text/event-stream",
           "Content-Type": "application/json",
+          ...buildTrustedProxyHeaders(
+            request.headers,
+            process.env.TRUSTED_PROXY_SECRET,
+          ),
         },
         body: await request.text(),
       },

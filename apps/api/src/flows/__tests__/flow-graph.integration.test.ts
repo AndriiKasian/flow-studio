@@ -81,9 +81,7 @@ describe("Flows API - Graph", () => {
           type: "llm",
           position: { x: 150, y: 250 },
           data: {
-            model: "claude-sonnet",
             systemPrompt: "You are a helpful assistant.",
-            temperature: 0.7,
           },
         },
       ],
@@ -204,6 +202,51 @@ describe("Flows API - Graph", () => {
         },
       ],
     });
+  });
+
+  it("normalizes deprecated LLM fields when loading a flow", async () => {
+    const createResponse = await request(app)
+      .post("/flows")
+      .send({ name: "Legacy LLM Graph" });
+
+    expect(createResponse.status).toBe(201);
+
+    const createdFlow = trackCreatedFlow(createResponse.body);
+
+    const legacyNode = {
+      id: "llm-1",
+      type: "llm",
+      position: { x: 100, y: 200 },
+      data: {
+        model: "claude-sonnet",
+        systemPrompt: "You are a helpful assistant.",
+        temperature: 0.7,
+      },
+    };
+
+    await prisma.flow.update({
+      where: { id: createdFlow.id },
+      data: { graph: { nodes: [legacyNode], edges: [] } },
+    });
+
+    const response = await request(app).get(
+      `/flows/${createdFlow.id}`,
+    );
+
+    expect(response.status).toBe(200);
+
+    const responseBody: unknown = response.body;
+
+    const loadedFlow = flowSchema.extend({
+      graph: workflowGraphSchema,
+    }).parse(responseBody);
+
+    expect(loadedFlow.graph.nodes).toEqual([
+      {
+        ...legacyNode,
+        data: { systemPrompt: "You are a helpful assistant." },
+      },
+    ]);
   });
 
   it("loads a newly created flow with a null graph", async () => {

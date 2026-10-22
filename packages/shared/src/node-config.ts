@@ -1,30 +1,37 @@
 import { z } from "zod";
 
+const MAX_TEXT_LENGTH = 4_000;
+const MAX_TEMPLATE_LENGTH = 4_000;
+const MAX_TEMPLATE_INPUTS = 20;
+const MAX_IDENTIFIER_LENGTH = 100;
+
 export const userInputDataSchema = z.strictObject({
-  variableName: z.string().optional(),
-  defaultValue: z.string().optional(),
+  variableName: z.string().max(MAX_IDENTIFIER_LENGTH).optional(),
+  defaultValue: z.string().max(MAX_TEXT_LENGTH).optional(),
 });
 
 export const textInputDataSchema = z.strictObject({
-  text: z.string().optional(),
+  text: z.string().max(MAX_TEXT_LENGTH).optional(),
 });
 
 export const promptTemplateInputSchema = z.strictObject({
-  id: z.string().min(1),
-  name: z.string().regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/),
+  id: z.string().min(1).max(MAX_IDENTIFIER_LENGTH),
+  name: z
+    .string()
+    .max(MAX_IDENTIFIER_LENGTH)
+    .regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/),
 });
 
 export const promptTemplateDataSchema = z.strictObject({
-  template: z.string().optional(),
-  inputs: z.array(promptTemplateInputSchema).optional(),
+  template: z.string().max(MAX_TEMPLATE_LENGTH).optional(),
+  inputs: z
+    .array(promptTemplateInputSchema)
+    .max(MAX_TEMPLATE_INPUTS)
+    .optional(),
 });
 
 export const llmDataSchema = z.strictObject({
-  model: z
-    .enum(["claude-sonnet", "claude-haiku", "openai-gpt"])
-    .optional(),
-  systemPrompt: z.string().optional(),
-  temperature: z.number().finite().min(0).max(2).optional(),
+  systemPrompt: z.string().max(MAX_TEXT_LENGTH).optional(),
 });
 
 export const textTransformDataSchema = z.strictObject({
@@ -34,3 +41,7 @@ export const textTransformDataSchema = z.strictObject({
 });
 
 export const textOutputDataSchema = z.strictObject({});
+
+export const webSearchDataSchema = z.strictObject({});
+
+export const jsonOutputDataSchema = z.strictObject({});

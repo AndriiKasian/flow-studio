@@ -277,6 +277,78 @@ describe("Flows API - SSE", () => {
     });
   });
 
+  it("streams actionable node errors to the editor", async () => {
+    const createResponse = await request(app)
+      .post("/flows")
+      .send({ name: "SSE Failure Flow" });
+
+    expect(createResponse.status).toBe(201);
+
+    const flow = trackCreatedFlow(createResponse.body);
+
+    const failingGraph = workflowGraphSchema.parse({
+      nodes: [
+        {
+          id: "input-1",
+          type: "textInput",
+          position: { x: 0, y: 0 },
+          data: { text: "hello" },
+        },
+        {
+          id: "transform-1",
+          type: "textTransform",
+          position: { x: 200, y: 0 },
+          data: {},
+        },
+      ],
+      edges: [
+        {
+          id: "edge-1",
+          source: "input-1",
+          sourceHandle: "text",
+          target: "transform-1",
+          targetHandle: "input",
+        },
+      ],
+    });
+
+    const response = await request(app)
+      .post(`/flows/${flow.id}/execute/stream`)
+      .send(failingGraph)
+      .buffer(true)
+      .parse((res, callback) => {
+        let body = "";
+
+        res.setEncoding("utf8");
+        res.on("data", (chunk: string) => {
+          body += chunk;
+        });
+        res.on("end", () => callback(null, body));
+        res.on("error", callback);
+      });
+
+    expect(response.status).toBe(200);
+
+    const events = (response.body as string)
+      .split("\n")
+      .filter((line) => line.startsWith("data: "))
+      .map((line): unknown => JSON.parse(line.slice(6)));
+
+    expect(events).toContainEqual({
+      type: "node:stop",
+      nodeId: "transform-1",
+      status: "failed",
+      error: "Text Transform requires an operation",
+    });
+
+    expect(events).toContainEqual({
+      type: "flow:stop",
+      status: "failed",
+      error:
+        'Node "transform-1" failed: Text Transform requires an operation',
+    });
+  });
+
   it("returns 404 when streaming a nonexistent flow", async () => {
     const response = await request(app)
       .post("/flows/nonexistent-flow-id/execute/stream")

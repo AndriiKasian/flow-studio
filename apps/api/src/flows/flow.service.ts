@@ -1,4 +1,3 @@
-
 import type {
   CreateFlowInput,
   UpdateFlowInput,
@@ -6,9 +5,15 @@ import type {
 } from "@flow-studio/shared";
 import { prisma } from "../lib/prisma.js";
 
-export function createFlow(data: CreateFlowInput) {
-  return prisma.flow.create({
-    data,
+export async function createFlow(data: CreateFlowInput) {
+  return prisma.$transaction(async (tx) => {
+    // Serialize concurrent creates across all API instances.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(824719, 15)`;
+    const count = await tx.flow.count();
+    if (count >= 10) {
+      return null;
+    }
+    return tx.flow.create({ data });
   });
 }
 

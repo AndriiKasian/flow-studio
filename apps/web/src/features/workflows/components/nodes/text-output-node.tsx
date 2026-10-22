@@ -28,7 +28,7 @@ export function TextOutputNode({
           Output
         </span>
 
-        <div className="workflow-node-field min-h-24 whitespace-pre-wrap break-words">
+        <div className="workflow-node-field nodrag nowheel h-36 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
           {result || (
             <span className="text-muted-foreground">
               Output will appear here...

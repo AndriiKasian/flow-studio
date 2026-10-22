@@ -44,6 +44,7 @@ export function NodeWrapper({
 interface NodeHandleProps {
   id: string;
   type: "source" | "target";
+  position?: Position;
   top?: CSSProperties["top"];
   left?: CSSProperties["left"];
   label?: string;
@@ -53,20 +54,21 @@ interface NodeHandleProps {
 export function NodeHandle({
   id,
   type,
+  position,
   top,
   left,
   label,
   inactive = false,
 }: NodeHandleProps) {
-  const position =
-    type === "target" ? Position.Left : Position.Right;
+  const resolvedPosition =
+    position ?? (type === "target" ? Position.Left : Position.Right);
 
   return (
     <>
       <Handle
         id={id}
         type={type}
-        position={position}
+        position={resolvedPosition}
         isConnectable={!inactive}
         style={{
           ...(top !== undefined ? { top } : {}),

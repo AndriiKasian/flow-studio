@@ -2,7 +2,9 @@
 
 import { useReactFlow } from "@xyflow/react";
 import { ChevronDown } from "lucide-react";
-import type { ReactNode } from "react";
+import type { ChangeEvent, ReactNode } from "react";
+
+import { useWorkflowReadOnly } from "../../contexts/workflow-read-only-context";
 
 interface NodeFieldProps {
   nodeId: string;
@@ -34,8 +36,11 @@ export function NodeField({
   onValueChange,
 }: NodeFieldProps) {
   const { updateNodeData } = useReactFlow();
+  const readOnly = useWorkflowReadOnly();
 
   const updateValue = (nextValue: string) => {
+    if (readOnly) return;
+
     if (onValueChange) {
       onValueChange(nextValue);
       return;
@@ -65,11 +70,10 @@ export function NodeField({
     name,
     value,
     placeholder,
+    readOnly,
     className: "workflow-node-field nodrag nowheel",
     onChange: (
-      event: React.ChangeEvent<
-        HTMLInputElement | HTMLTextAreaElement
-      >,
+      event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
     ) => updateValue(event.target.value),
   };
 
@@ -119,6 +123,7 @@ export function NodeSelect({
   placeholder = "Select an option",
 }: NodeSelectProps) {
   const { updateNodeData } = useReactFlow();
+  const readOnly = useWorkflowReadOnly();
 
   return (
     <div className="space-y-2">
@@ -134,11 +139,14 @@ export function NodeSelect({
           id={`${nodeId}-${name}`}
           name={name}
           value={value}
-          onChange={(event) =>
+          disabled={readOnly}
+          onChange={(event) => {
+            if (readOnly) return;
+
             updateNodeData(nodeId, {
               [name]: event.target.value,
-            })
-          }
+            });
+          }}
           className="workflow-node-field nodrag nowheel appearance-none pr-10"
         >
           <option value="" disabled>
@@ -162,10 +170,6 @@ export function NodeSelect({
   );
 }
 
-export function NodeFieldsLayout({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export function NodeFieldsLayout({ children }: { children: ReactNode }) {
   return <div className="space-y-4">{children}</div>;
 }

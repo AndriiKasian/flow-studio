@@ -58,6 +58,15 @@ export function executePromptTemplate(
       values.get(variable) ?? placeholder,
   );
 
+  const MAX_PROMPT_LENGTH = 20_000;
+
+  if (prompt.length > MAX_PROMPT_LENGTH) {
+    return {
+      status: "failed",
+      error: "Prompt Template output exceeds the maximum allowed length",
+    };
+  }
+
   return {
     status: "completed",
     outputs: { prompt },

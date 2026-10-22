@@ -1,4 +1,7 @@
 import type { CreateFlowInput, Flow, UpdateFlowInput, WorkflowGraph } from "@flow-studio/shared";
+import { headers } from "next/headers";
+
+import { buildTrustedProxyHeaders } from "./trusted-proxy";
 
 function getApiUrl(): string {
   const apiUrl = process.env.API_URL;
@@ -8,6 +11,14 @@ function getApiUrl(): string {
   }
 
   return apiUrl;
+}
+
+// Identifies the visitor to the API for per-visitor write rate limits.
+async function getTrustedProxyHeaders(): Promise<Record<string, string>> {
+  return buildTrustedProxyHeaders(
+    await headers(),
+    process.env.TRUSTED_PROXY_SECRET,
+  );
 }
 
 export async function getFlows(): Promise<Flow[]> {
@@ -39,6 +50,7 @@ export async function createFlow(input: CreateFlowInput): Promise<Flow> {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...(await getTrustedProxyHeaders()),
     },
     body: JSON.stringify(input),
   });
@@ -58,6 +70,7 @@ export async function updateFlow(
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
+      ...(await getTrustedProxyHeaders()),
     },
     body: JSON.stringify(input),
   });
@@ -72,6 +85,7 @@ export async function updateFlow(
 export async function deleteFlow(id: string): Promise<void> {
   const response = await fetch(`${getApiUrl()}/flows/${id}`, {
     method: "DELETE",
+    headers: await getTrustedProxyHeaders(),
   });
 
   if (!response.ok) {
@@ -87,6 +101,7 @@ export async function saveFlowGraph(
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
+      ...(await getTrustedProxyHeaders()),
     },
     body: JSON.stringify(graph),
   });

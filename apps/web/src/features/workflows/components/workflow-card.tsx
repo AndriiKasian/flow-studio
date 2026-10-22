@@ -6,12 +6,28 @@ import { FlowStudioLogo } from "@/components/ui/flow-studio-logo";
 
 import { WorkflowActions } from "./workflow-actions";
 
-interface WorkflowCardProps {
-  flow: Flow;
-}
+type WorkflowCardProps =
+  | {
+      variant: "demo";
+      flow?: never;
+    }
+  | {
+      variant?: "default";
+      flow: Flow;
+    };
 
-export function WorkflowCard({ flow }: WorkflowCardProps) {
-  const workflowHref = `/workflows/${flow.id}`;
+export function WorkflowCard(props: WorkflowCardProps) {
+  const isDemo = props.variant === "demo";
+
+  const name = isDemo ? "AI Research Demo" : props.flow.name;
+
+  const description = isDemo
+    ? "Explore a live AI workflow powered by web search and a language model."
+    : (props.flow.description ?? "No description");
+
+  const workflowHref = isDemo
+    ? "/workflows/demo"
+    : `/workflows/${props.flow.id}`;
 
   return (
     <article className="group bg-card text-card-foreground hover:border-brand/30 rounded-xl border p-5 transition-all hover:-translate-y-0.5 hover:shadow-md">
@@ -20,7 +36,13 @@ export function WorkflowCard({ flow }: WorkflowCardProps) {
           <FlowStudioLogo size={24} />
         </div>
 
-        <WorkflowActions flow={flow} />
+        {props.variant === "demo" ? (
+          <span className="text-xs text-muted-foreground">
+            Read-only demo
+          </span>
+        ) : (
+          <WorkflowActions flow={props.flow} />
+        )}
       </div>
 
       <h2 className="font-semibold tracking-tight">
@@ -28,27 +50,28 @@ export function WorkflowCard({ flow }: WorkflowCardProps) {
           href={workflowHref}
           className="transition-colors hover:text-brand"
         >
-          {flow.name}
+          {name}
         </Link>
       </h2>
 
       <p className="mt-2 line-clamp-2 min-h-10 text-sm text-muted-foreground">
-        {flow.description ?? "No description"}
+        {description}
       </p>
 
       <div className="mt-6 flex items-center justify-between">
         <span className="text-xs text-muted-foreground">
-          Updated{" "}
-          {new Intl.DateTimeFormat("en", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          }).format(new Date(flow.updatedAt))}
+          {props.variant === "demo"
+            ? "Public demo"
+            : `Updated ${new Intl.DateTimeFormat("en", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              }).format(new Date(props.flow.updatedAt))}`}
         </span>
 
         <Link
           href={workflowHref}
-          aria-label={`Open ${flow.name}`}
+          aria-label={`Open ${name}`}
           className="text-muted-foreground transition-colors hover:text-brand"
         >
           <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />

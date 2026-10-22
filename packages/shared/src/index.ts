@@ -35,6 +35,16 @@ export type { WorkflowExecutionEvent } from "./workflow-execution-events";
 export { normalizeWorkflowGraph } from './workflow-graph-normalization';
 
 export {
+  demoErrorResponseSchema,
+  type DemoErrorResponse,
+} from "./demo";
+
+export {
+  TRUSTED_PROXY_SECRET_HEADER,
+  TRUSTED_CLIENT_IP_HEADER,
+} from "./trusted-proxy";
+
+export {
   getActivePromptTemplateInputs,
   syncPromptTemplateInputs,
   type PromptTemplateInput

@@ -14,7 +14,17 @@ const categoryLabels = {
   output: "Output",
 } as const;
 
-const nodeEntries = Object.entries(NODE_DEFINITIONS);
+const nodeEntries = Object.entries(NODE_DEFINITIONS).filter(([type]) => {
+  if (type === "userInput") {
+    return false;
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    return type !== "llm" && type !== "webSearch";
+  }
+
+  return true;
+});
 
 export function WorkflowEditorSidebar() {
   const [search, setSearch] = useState("");

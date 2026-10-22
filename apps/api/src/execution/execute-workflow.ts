@@ -1,4 +1,3 @@
-
 import type {
   WorkflowExecutionEvent,
   WorkflowGraph,
@@ -6,6 +5,7 @@ import type {
 
 import { buildExecutionGraph } from "./build-execution-graph";
 import { collectNodeInputs } from "./collect-node-inputs";
+import { logError } from "../lib/error-diagnostics";
 import { executeNode } from "./execute-node";
 import { topologicalSort } from "./topological-sort";
 import type { NodeExecutionResult } from "./types";
@@ -21,9 +21,13 @@ export type WorkflowEventHandler = (
   event: WorkflowExecutionEvent,
 ) => void;
 
+const ABORT_ERROR = "Workflow execution was cancelled";
+const UNEXPECTED_NODE_ERROR = "Node execution failed unexpectedly";
+
 export async function executeWorkflow(
   graph: WorkflowGraph,
   onEvent?: WorkflowEventHandler,
+  signal?: AbortSignal,
 ): Promise<WorkflowExecutionResult> {
   const results = new Map<string, NodeExecutionResult>();
 
@@ -45,6 +49,10 @@ export async function executeWorkflow(
   };
 
   onEvent?.({ type: "flow:start" });
+
+  if (signal?.aborted) {
+    return finish("failed", ABORT_ERROR);
+  }
 
   const executionGraph = buildExecutionGraph(graph);
 
@@ -95,6 +103,10 @@ export async function executeWorkflow(
   };
 
   for (const nodeId of executionOrder) {
+    if (signal?.aborted) {
+      return finish("failed", ABORT_ERROR);
+    }
+
     const node = nodesById.get(nodeId);
 
     if (!node) {
@@ -113,7 +125,25 @@ export async function executeWorkflow(
         results,
       );
 
-      const result = await executeNode(node, inputs);
+      const result = await executeNode(node, inputs, signal);
+
+      if (signal?.aborted) {
+        results.set(nodeId, {
+          status: "failed",
+          error: ABORT_ERROR,
+        });
+
+        onEvent?.({
+          type: "node:stop",
+          nodeId,
+          status: "failed",
+          error: ABORT_ERROR,
+        });
+
+        markRemainingNodesSkipped(nodeId);
+
+        return finish("failed", ABORT_ERROR);
+      }
 
       results.set(nodeId, result);
 
@@ -138,10 +168,15 @@ export async function executeWorkflow(
         );
       }
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Unknown execution error";
+      // Executors return curated failure messages; an unexpected throw may
+      // carry internal or provider details, so it is logged and masked.
+      if (!signal?.aborted) {
+        logError(`Node "${nodeId}" threw during execution`, error);
+      }
+
+      const message = signal?.aborted
+        ? ABORT_ERROR
+        : UNEXPECTED_NODE_ERROR;
 
       results.set(nodeId, {
         status: "failed",

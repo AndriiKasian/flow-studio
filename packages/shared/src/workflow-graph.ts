@@ -7,6 +7,8 @@ import {
   llmDataSchema,
   textTransformDataSchema,
   textOutputDataSchema,
+  webSearchDataSchema,
+  jsonOutputDataSchema,
 } from "./node-config";
 
 export const workflowNodeTypeSchema = z.enum([
@@ -16,6 +18,8 @@ export const workflowNodeTypeSchema = z.enum([
   "llm",
   "textTransform",
   "textOutput",
+  "webSearch",
+  "jsonOutput",
 ]);
 
 export type WorkflowNodeType = z.infer<
@@ -55,6 +59,14 @@ export const workflowNodeSchema = z.discriminatedUnion("type", [
   baseNodeSchema.extend({
     type: z.literal("textOutput"),
     data: textOutputDataSchema,
+  }),
+  baseNodeSchema.extend({
+    type: z.literal("webSearch"),
+    data: webSearchDataSchema,
+  }),
+  baseNodeSchema.extend({
+    type: z.literal("jsonOutput"),
+    data: jsonOutputDataSchema,
   }),
 ]);
 

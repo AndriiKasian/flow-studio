@@ -1,5 +1,6 @@
 import type { ErrorRequestHandler } from "express";
 import { Prisma } from "../generated/prisma/client.js";
+import { logError } from "../lib/error-diagnostics.js";
 
 // Client errors raised by express.json() (body-parser), keyed by error type.
 const bodyParserErrors: Record<string, { status: number; error: string }> = {
@@ -27,7 +28,7 @@ function getBodyParserError(error: unknown) {
   return undefined;
 }
 
-export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
+export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
   void _next;
 
   if (
@@ -49,7 +50,7 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
     return;
   }
 
-  console.error(error);
+  logError(`Unhandled API error: ${req.method} ${req.baseUrl}${req.path}`, error);
 
   res.status(500).json({
     error: "Internal server error",

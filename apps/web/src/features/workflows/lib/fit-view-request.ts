@@ -43,3 +43,45 @@ export function getFitViewDecision(
 
   return nodesInitialized ? "fit" : "wait";
 }
+
+/**
+ * Consumes the pending request and fits the viewport to it. Completion is
+ * reported exactly once per consumed request, after fitting settles. It must
+ * not be cancelled by a later re-run: the request is already consumed, so a
+ * cancelled completion would never be reported (leaving the read-only demo
+ * canvas hidden).
+ */
+export function processFitViewRequest(
+  requestRef: { current: FitViewRequest | null },
+  nodeIds: readonly string[],
+  nodesInitialized: boolean,
+  fitView: (request: FitViewRequest) => Promise<unknown>,
+  onComplete?: () => void,
+): void {
+  const request = requestRef.current;
+
+  if (!request) {
+    return;
+  }
+
+  const decision = getFitViewDecision(request, nodeIds, nodesInitialized);
+
+  if (decision === "wait") {
+    return;
+  }
+
+  requestRef.current = null;
+
+  if (decision === "discard") {
+    onComplete?.();
+    return;
+  }
+
+  void fitView(request)
+    .catch(() => {
+      // Do not leave the demo hidden if fitting fails.
+    })
+    .finally(() => {
+      onComplete?.();
+    });
+}

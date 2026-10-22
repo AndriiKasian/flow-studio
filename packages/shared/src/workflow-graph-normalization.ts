@@ -1,5 +1,11 @@
 import { workflowGraphSchema, type WorkflowGraph } from "./workflow-graph";
 
+// Fields written by earlier versions that are no longer part of the node schema.
+const DEPRECATED_NODE_FIELDS: Partial<Record<string, readonly string[]>> = {
+  textOutput: ["result"],
+  llm: ["model", "temperature"],
+};
+
 export function normalizeWorkflowGraph(
   input: unknown,
 ): WorkflowGraph | null {
@@ -17,7 +23,7 @@ export function normalizeWorkflowGraph(
       typeof node !== "object" ||
       node === null ||
       !("type" in node) ||
-      node.type !== "textOutput" ||
+      typeof node.type !== "string" ||
       !("data" in node) ||
       typeof node.data !== "object" ||
       node.data === null ||
@@ -26,8 +32,17 @@ export function normalizeWorkflowGraph(
       return node;
     }
 
+    const deprecatedFields = DEPRECATED_NODE_FIELDS[node.type];
+
+    if (!deprecatedFields) {
+      return node;
+    }
+
     const data: Record<string, unknown> = { ...node.data };
-    delete data.result;
+
+    for (const field of deprecatedFields) {
+      delete data[field];
+    }
 
     return { ...node, data };
   });

@@ -49,6 +49,47 @@ describe("normalizeWorkflowGraph", () => {
     });
   });
 
+  it("removes deprecated LLM model and temperature fields", () => {
+    const legacyGraph = {
+      nodes: [
+        {
+          id: "llm-1",
+          type: "llm",
+          position: { x: 0, y: 0 },
+          data: {
+            model: "claude-sonnet",
+            systemPrompt: "You are a helpful assistant.",
+            temperature: 0.7,
+          },
+        },
+      ],
+      edges: [],
+    };
+
+    const result = normalizeWorkflowGraph(legacyGraph);
+
+    expect(result?.nodes[0]?.data).toEqual({
+      systemPrompt: "You are a helpful assistant.",
+    });
+    expect(legacyGraph.nodes[0]?.data).toHaveProperty("model");
+  });
+
+  it("still rejects unknown LLM fields", () => {
+    const invalidGraph = {
+      nodes: [
+        {
+          id: "llm-1",
+          type: "llm",
+          position: { x: 0, y: 0 },
+          data: { provider: "unknown" },
+        },
+      ],
+      edges: [],
+    };
+
+    expect(normalizeWorkflowGraph(invalidGraph)).toBeNull();
+  });
+
   it("preserves valid graphs", () => {
     const validGraph = {
       nodes: [

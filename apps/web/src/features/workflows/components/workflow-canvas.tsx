@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -10,14 +11,18 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 
-import { useEffect, type RefObject } from "react";
+import {
+  useEffect,
+  useState,
+  type RefObject,
+} from "react";
+
 import {
   isActiveInputHandle,
   type WorkflowGraph,
 } from "@flow-studio/shared";
 
-import "@xyflow/react/dist/style.css";
-import "../styles/workflow-canvas.css";
+import { WorkflowReadOnlyContext } from "../contexts/workflow-read-only-context";
 
 import {
   CANVAS_BACKGROUND,
@@ -26,62 +31,64 @@ import {
 } from "../lib/workflow-canvas-config";
 
 import {
-  getFitViewDecision,
+  processFitViewRequest,
   type FitViewRequest,
 } from "../lib/fit-view-request";
+
 import { getWorkflowEdgeStatus } from "../lib/workflow-edge-status";
 import { getWorkflowNodeClassName } from "../lib/workflow-node-class";
 import type { WorkflowExecutionState } from "../lib/workflow-execution-status";
+
 import {
   useWorkflowCanvas,
   type WorkflowCanvasGraph,
 } from "../hooks/use-workflow-canvas";
+
 import { ConnectionErrorAlert } from "./connection-error-alert";
+
+import "@xyflow/react/dist/style.css";
+import "../styles/workflow-canvas.css";
 
 interface WorkflowCanvasProps {
   initialGraph: WorkflowGraph | null;
   graphRef: RefObject<WorkflowCanvasGraph>;
   fitViewRequestRef: RefObject<FitViewRequest | null>;
   executionState: WorkflowExecutionState;
+  readOnly?: boolean;
 }
 
 interface FitViewOnRequestProps {
   requestRef: RefObject<FitViewRequest | null>;
+  onInitialFitComplete?: () => void;
 }
 
-// Fits the viewport when a workflow is opened or imported, once React Flow
-// has measured the requested nodes. Other node updates never fit.
-function FitViewOnRequest({ requestRef }: FitViewOnRequestProps) {
+function FitViewOnRequest({
+  requestRef,
+  onInitialFitComplete,
+}: FitViewOnRequestProps) {
   const nodesInitialized = useNodesInitialized();
   const { fitView, getNodes } = useReactFlow();
 
   useEffect(() => {
-    const request = requestRef.current;
-
-    if (!request) {
-      return;
-    }
-
-    const decision = getFitViewDecision(
-      request,
+    processFitViewRequest(
+      requestRef,
       getNodes().map((node) => node.id),
       nodesInitialized,
+      (request) =>
+        fitView({
+          padding: 0.2,
+          duration: request.animate ? 300 : 0,
+          maxZoom: 1,
+        }),
+      onInitialFitComplete,
     );
-
-    if (decision === "wait") {
-      return;
-    }
-
-    requestRef.current = null;
-
-    if (decision === "fit") {
-      void fitView({
-        padding: 0.2,
-        duration: request.animate ? 300 : 0,
-        maxZoom: 1,
-      });
-    }
-  }, [nodesInitialized, fitView, getNodes, requestRef]);
+  }, [
+    nodesInitialized,
+    fitView,
+    getNodes,
+    requestRef,
+    onInitialFitComplete,
+  ]);
 
   return null;
 }
@@ -91,7 +98,10 @@ export function WorkflowCanvas({
   graphRef,
   fitViewRequestRef,
   executionState,
+  readOnly = false,
 }: WorkflowCanvasProps) {
+  const [initialFitComplete, setInitialFitComplete] = useState(!readOnly);
+
   const {
     nodes,
     edges,
@@ -107,11 +117,54 @@ export function WorkflowCanvas({
     dismissConnectionError,
   } = useWorkflowCanvas(initialGraph, graphRef);
 
+  // Read the executed Text Input value for the connected Web Search node.
+  // This is display-only: it does not modify the saved workflow graph.
+  const getWebSearchQuery = (webSearchNodeId: string) => {
+    const incomingEdge = edges.find(
+      (edge) =>
+        edge.target === webSearchNodeId &&
+        edge.targetHandle === "query" &&
+        edge.sourceHandle === "text",
+    );
+
+    if (!incomingEdge) {
+      return undefined;
+    }
+
+    const sourceNode = nodes.find(
+      (node) =>
+        node.id === incomingEdge.source &&
+        node.type === "textInput",
+    );
+
+    if (!sourceNode) {
+      return undefined;
+    }
+
+    const executedValue =
+      executionState.nodeOutputs[sourceNode.id]?.text;
+
+    if (typeof executedValue === "string") {
+      return executedValue;
+    }
+
+    // Before execution, display the configured Text Input value.
+    return typeof sourceNode.data.text === "string"
+      ? sourceNode.data.text
+      : undefined;
+  };
+
+
   const displayNodes = nodes.map((node) => {
     const status =
       executionState.nodeStatuses[node.id] ?? "idle";
 
     const outputs = executionState.nodeOutputs[node.id];
+
+    const webSearchQuery =
+      readOnly && node.type === "webSearch"
+        ? getWebSearchQuery(node.id)
+        : undefined;
 
     return {
       ...node,
@@ -125,11 +178,20 @@ export function WorkflowCanvas({
         typeof outputs?.result === "string"
           ? { result: outputs.result }
           : {}),
+        ...(node.type === "jsonOutput" &&
+        outputs?.result !== undefined
+          ? { result: outputs.result }
+          : {}),
+        ...(webSearchQuery !== undefined
+          ? { query: webSearchQuery }
+          : {}),
       },
     };
   });
 
-  const nodesById = new Map(nodes.map((node) => [node.id, node]));
+  const nodesById = new Map(
+    nodes.map((node) => [node.id, node]),
+  );
 
   const displayEdges = edges.map((edge) => {
     const target = nodesById.get(edge.target);
@@ -151,47 +213,85 @@ export function WorkflowCanvas({
         inactive,
         status: inactive
           ? "idle"
-          : getWorkflowEdgeStatus(sourceStatus, targetStatus),
+          : getWorkflowEdgeStatus(
+              sourceStatus,
+              targetStatus,
+            ),
       },
     };
   });
 
   return (
-    <div className="relative h-full w-full">
-      <ReactFlow
-        nodes={displayNodes}
-        edges={displayEdges}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
-        onConnect={onConnect}
-        onConnectStart={onConnectStart}
-        onConnectEnd={onConnectEnd}
-        isValidConnection={isValidConnection}
-        connectionLineType={ConnectionLineType.Bezier}
-        defaultEdgeOptions={{
-          type: "workflow",
+    <WorkflowReadOnlyContext.Provider value={readOnly}>
+      <div
+        className="relative h-full w-full"
+        style={{
+          opacity:
+            readOnly && !initialFitComplete ? 0 : 1,
         }}
-        deleteKeyCode={["Backspace", "Delete"]}
       >
-        <FitViewOnRequest requestRef={fitViewRequestRef} />
+        <ReactFlow
+          nodes={displayNodes}
+          edges={displayEdges}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={
+            readOnly ? undefined : onEdgesChange
+          }
+          onDragOver={readOnly ? undefined : onDragOver}
+          onDrop={readOnly ? undefined : onDrop}
+          onConnect={readOnly ? undefined : onConnect}
+          onConnectStart={
+            readOnly ? undefined : onConnectStart
+          }
+          onConnectEnd={
+            readOnly ? undefined : onConnectEnd
+          }
+          isValidConnection={
+            readOnly ? undefined : isValidConnection
+          }
+          nodesDraggable={!readOnly}
+          nodesConnectable={!readOnly}
+          elementsSelectable={!readOnly}
+          nodesFocusable={!readOnly}
+          edgesFocusable={!readOnly}
+          panOnScroll={false}
+          zoomOnScroll={!readOnly}
+          connectionLineType={ConnectionLineType.Bezier}
+          defaultEdgeOptions={{
+            type: "workflow",
+          }}
+          deleteKeyCode={
+            readOnly ? null : ["Backspace", "Delete"]
+          }
+          proOptions={{ hideAttribution: true }}
+        >
+          <FitViewOnRequest
+            requestRef={fitViewRequestRef}
+            onInitialFitComplete={
+              readOnly
+                ? () => setInitialFitComplete(true)
+                : undefined
+            }
+          />
 
-        <Background
-          variant={BackgroundVariant.Dots}
-          gap={CANVAS_BACKGROUND.gap}
-          size={CANVAS_BACKGROUND.dotSize}
-        />
+          <Background
+            variant={BackgroundVariant.Dots}
+            gap={CANVAS_BACKGROUND.gap}
+            size={CANVAS_BACKGROUND.dotSize}
+          />
 
-        <Controls />
-      </ReactFlow>
+          <Controls />
+        </ReactFlow>
 
-      <ConnectionErrorAlert
-        error={connectionError}
-        onDismiss={dismissConnectionError}
-      />
-    </div>
+        {!readOnly && (
+          <ConnectionErrorAlert
+            error={connectionError}
+            onDismiss={dismissConnectionError}
+          />
+        )}
+      </div>
+    </WorkflowReadOnlyContext.Provider>
   );
 }

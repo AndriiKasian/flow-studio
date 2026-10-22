@@ -28,6 +28,8 @@ export default async function Home() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <WorkflowCard variant="demo" />
+
           {flows.map((flow) => (
             <WorkflowCard key={flow.id} flow={flow} />
           ))}
