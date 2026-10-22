@@ -44,7 +44,7 @@ export function JsonOutputNode({
           JSON Output
         </span>
 
-        <div className="workflow-node-field nodrag nowheel h-36 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-mono text-xs">
+        <div className="workflow-node-field nodrag nopan nowheel pointer-events-auto h-36 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-mono text-xs">
           {formattedResult || (
             <span className="text-muted-foreground">
               JSON output will appear here...
