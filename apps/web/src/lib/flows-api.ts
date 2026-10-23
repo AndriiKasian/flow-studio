@@ -32,7 +32,7 @@ export async function getFlows(): Promise<Flow[]> {
 }
 
 export async function getFlow(id: string): Promise<Flow | null> {
-  const response = await fetch(`${getApiUrl()}/flows/${id}`);
+  const response = await fetch(`${getApiUrl()}/flows/${encodeURIComponent(id)}`);
 
   if (response.status === 404) {
     return null;
@@ -66,7 +66,7 @@ export async function updateFlow(
   id: string,
   input: UpdateFlowInput,
 ): Promise<Flow> {
-  const response = await fetch(`${getApiUrl()}/flows/${id}`, {
+  const response = await fetch(`${getApiUrl()}/flows/${encodeURIComponent(id)}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -83,7 +83,7 @@ export async function updateFlow(
 }
 
 export async function deleteFlow(id: string): Promise<void> {
-  const response = await fetch(`${getApiUrl()}/flows/${id}`, {
+  const response = await fetch(`${getApiUrl()}/flows/${encodeURIComponent(id)}`, {
     method: "DELETE",
     headers: await getTrustedProxyHeaders(),
   });
@@ -97,7 +97,7 @@ export async function saveFlowGraph(
   id: string,
   graph: WorkflowGraph,
 ): Promise<void> {
-  const response = await fetch(`${getApiUrl()}/flows/${id}/graph`, {
+  const response = await fetch(`${getApiUrl()}/flows/${encodeURIComponent(id)}/graph`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
