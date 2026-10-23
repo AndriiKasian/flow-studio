@@ -22,7 +22,7 @@ function getApiUrl(): string {
 // Workflow IDs are UUIDs. Validating them keeps client-supplied IDs (route
 // params, Server Action arguments) from changing the requested API path, e.g.
 // "." and ".." segments, which encodeURIComponent leaves unencoded.
-function isFlowId(id: string): boolean {
+export function isFlowId(id: string): boolean {
   return flowSchema.shape.id.safeParse(id).success;
 }
 

@@ -11,6 +11,9 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// The demo run may stream for up to 45 seconds (API timeout); keep the
+// function alive for the whole relayed stream on Vercel.
+export const maxDuration = 60;
 
 export async function POST(
   request: NextRequest,

@@ -188,7 +188,7 @@ The API's rate limits and demo concurrency cap are in memory: run **one** Render
 | --- | --- |
 | Root Directory | *(repository root)* |
 | Build Command | `corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm build:api` |
-| Pre-Deploy Command | `DATABASE_URL="$DIRECT_DATABASE_URL" pnpm --filter @flow-studio/api migrate:deploy` |
+| Pre-Deploy Command | `DATABASE_URL="$DIRECT_DATABASE_URL" pnpm --filter @flow-studio/api migrate:deploy` (paid instance types only; on the free tier see [Database migrations on Neon](#database-migrations-on-neon)) |
 | Start Command | `pnpm --filter @flow-studio/api start` |
 | Health Check Path | `/api/demo/workflow` (static response, no database access) |
 | Node.js version | From `.node-version` (`22.15.0`) |
@@ -200,7 +200,7 @@ Environment variables (see `apps/api/.env.example`):
 | Variable | Production | Notes |
 | --- | --- | --- |
 | `DATABASE_URL` | Required | Neon **pooled** connection string, used at runtime. |
-| `DIRECT_DATABASE_URL` | Required for migrations | Neon **direct** connection string. Read only by the pre-deploy command above, not by the application. |
+| `DIRECT_DATABASE_URL` | Required for the pre-deploy command | Neon **direct** connection string. Read only by the pre-deploy command above, not by the application. Not needed on Render when migrations are run manually. |
 | `FRONTEND_URL` | Required | Vercel production origin (CORS). The API refuses to start without it. |
 | `TRUSTED_PROXY_SECRET` | Required | Long random value, identical on Vercel. Without it the Demo returns `503`. |
 | `OPENAI_API_KEY`, `OPENAI_MODEL` | Required for the Demo | LLM node. |
@@ -222,7 +222,15 @@ The Prisma CLI reads `DATABASE_URL` through `apps/api/prisma7.config.ts`, so the
 DATABASE_URL="$DIRECT_DATABASE_URL" pnpm --filter @flow-studio/api migrate:deploy
 ```
 
-`migrate deploy` applies only committed migrations; it never creates migrations or resets data. Never run `prisma migrate dev` or `prisma migrate reset` against Neon. Render pre-deploy commands require a paid instance type; on the free tier, run the same command manually, from a trusted machine with the direct connection string, before deploying a release that contains new migrations.
+`migrate deploy` applies only committed migrations; it never creates migrations or resets data. Never run `prisma migrate dev` or `prisma migrate reset` against Neon.
+
+**Render free tier:** pre-deploy commands require a paid instance type, so on the free tier Render does not run migrations. Apply them manually from a trusted machine, at the repository root with dependencies installed, using the Neon **direct** connection string:
+
+```bash
+DATABASE_URL="<neon-direct-connection-string>" pnpm --filter @flow-studio/api migrate:deploy
+```
+
+The inline `DATABASE_URL` takes precedence over a local `apps/api/.env`. Run it before the first deploy and before every deploy of a release that contains new migrations; otherwise the API starts against an outdated schema and database requests fail. Never commit the connection string.
 
 ### Web on Vercel
 
@@ -245,7 +253,7 @@ Vercel sets `NODE_ENV=production` during builds, which hides LLM and Web Search 
 ### Deployment order
 
 1. Create the Neon project and note the pooled and direct connection strings.
-2. Create the Render service with the settings above and a provisional `FRONTEND_URL`; the first deploy applies migrations.
+2. Create the Render service with the settings above and a provisional `FRONTEND_URL`. On a paid instance type, the pre-deploy command applies migrations on every deploy. On the free tier, run `migrate deploy` manually before the first deploy (see [Database migrations on Neon](#database-migrations-on-neon)).
 3. Create the Vercel project with `API_URL` pointing at Render and the shared `TRUSTED_PROXY_SECRET`.
 4. Update `FRONTEND_URL` on Render to the final Vercel origin and redeploy.
 

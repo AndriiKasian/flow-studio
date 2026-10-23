@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 
+import { isFlowId } from "@/lib/flows-api";
 import { buildTrustedProxyHeaders } from "@/lib/trusted-proxy";
 import {
   CLIENT_CLOSED_REQUEST_STATUS,
@@ -8,6 +9,8 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Keeps the function alive for the whole relayed stream on Vercel.
+export const maxDuration = 60;
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -27,6 +30,13 @@ export async function POST(
   }
 
   const { id } = await params;
+
+  if (!isFlowId(id)) {
+    return Response.json(
+      { error: "Flow not found" },
+      { status: 404 },
+    );
+  }
 
   try {
     const response = await fetch(
