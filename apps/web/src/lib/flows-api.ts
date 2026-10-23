@@ -1,4 +1,10 @@
-import type { CreateFlowInput, Flow, UpdateFlowInput, WorkflowGraph } from "@flow-studio/shared";
+import {
+  flowSchema,
+  type CreateFlowInput,
+  type Flow,
+  type UpdateFlowInput,
+  type WorkflowGraph,
+} from "@flow-studio/shared";
 import { headers } from "next/headers";
 
 import { buildTrustedProxyHeaders } from "./trusted-proxy";
@@ -11,6 +17,21 @@ function getApiUrl(): string {
   }
 
   return apiUrl;
+}
+
+// Workflow IDs are UUIDs. Validating them keeps client-supplied IDs (route
+// params, Server Action arguments) from changing the requested API path, e.g.
+// "." and ".." segments, which encodeURIComponent leaves unencoded.
+function isFlowId(id: string): boolean {
+  return flowSchema.shape.id.safeParse(id).success;
+}
+
+function getFlowUrl(id: string): string {
+  if (!isFlowId(id)) {
+    throw new Error("Invalid workflow ID");
+  }
+
+  return `${getApiUrl()}/flows/${encodeURIComponent(id)}`;
 }
 
 // Identifies the visitor to the API for per-visitor write rate limits.
@@ -32,7 +53,11 @@ export async function getFlows(): Promise<Flow[]> {
 }
 
 export async function getFlow(id: string): Promise<Flow | null> {
-  const response = await fetch(`${getApiUrl()}/flows/${encodeURIComponent(id)}`);
+  if (!isFlowId(id)) {
+    return null;
+  }
+
+  const response = await fetch(getFlowUrl(id));
 
   if (response.status === 404) {
     return null;
@@ -66,7 +91,7 @@ export async function updateFlow(
   id: string,
   input: UpdateFlowInput,
 ): Promise<Flow> {
-  const response = await fetch(`${getApiUrl()}/flows/${encodeURIComponent(id)}`, {
+  const response = await fetch(getFlowUrl(id), {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -83,7 +108,7 @@ export async function updateFlow(
 }
 
 export async function deleteFlow(id: string): Promise<void> {
-  const response = await fetch(`${getApiUrl()}/flows/${encodeURIComponent(id)}`, {
+  const response = await fetch(getFlowUrl(id), {
     method: "DELETE",
     headers: await getTrustedProxyHeaders(),
   });
@@ -97,7 +122,7 @@ export async function saveFlowGraph(
   id: string,
   graph: WorkflowGraph,
 ): Promise<void> {
-  const response = await fetch(`${getApiUrl()}/flows/${encodeURIComponent(id)}/graph`, {
+  const response = await fetch(`${getFlowUrl(id)}/graph`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",

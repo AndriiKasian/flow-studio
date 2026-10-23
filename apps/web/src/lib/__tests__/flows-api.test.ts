@@ -7,13 +7,18 @@ vi.mock("next/headers", () => ({
 }));
 
 const API_URL = "https://api.example.test";
+const FLOW_ID = "3f2b8c1e-9a4d-4e6f-8b7a-2c5d1e0f9a3b";
 
-// Each ID would change the requested API path if interpolated unencoded.
-const unsafeIds = [
-  ["slash", "abc/graph", "abc%2Fgraph"],
-  ["path traversal", "../api/demo/run", "..%2Fapi%2Fdemo%2Frun"],
-  ["query", "abc?x=1", "abc%3Fx%3D1"],
-  ["fragment", "abc#x", "abc%23x"],
+// Each ID would change the requested API path, or is not a workflow ID.
+const invalidIds = [
+  ["current-directory segment", "."],
+  ["parent-directory segment", ".."],
+  ["slash", "abc/graph"],
+  ["path traversal", "../api/demo/run"],
+  ["query", "abc?x=1"],
+  ["fragment", "abc#x"],
+  ["malformed UUID", "3f2b8c1e-9a4d-4e6f-8b7a"],
+  ["empty string", ""],
 ] as const;
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -24,7 +29,7 @@ function requestedUrl(): URL {
   return new URL(String(input));
 }
 
-describe("flows API path encoding", () => {
+describe("flows API workflow IDs", () => {
   beforeEach(() => {
     vi.stubEnv("API_URL", API_URL);
     vi.stubGlobal("fetch", fetchMock);
@@ -37,25 +42,41 @@ describe("flows API path encoding", () => {
     vi.unstubAllGlobals();
   });
 
-  describe.each(unsafeIds)("with a %s in the ID", (_, id, encodedId) => {
+  it.each([
+    ["getFlow", () => getFlow(FLOW_ID), `/flows/${FLOW_ID}`],
+    ["updateFlow", () => updateFlow(FLOW_ID, { name: "Flow" }), `/flows/${FLOW_ID}`],
+    ["deleteFlow", () => deleteFlow(FLOW_ID), `/flows/${FLOW_ID}`],
+    [
+      "saveFlowGraph",
+      () => saveFlowGraph(FLOW_ID, { nodes: [], edges: [] }),
+      `/flows/${FLOW_ID}/graph`,
+    ],
+  ])("%s requests the workflow by UUID", async (_, call, path) => {
+    await call();
+
+    const url = requestedUrl();
+
+    expect(url.origin).toBe(API_URL);
+    expect(url.pathname).toBe(path);
+    expect(url.search).toBe("");
+    expect(url.hash).toBe("");
+  });
+
+  describe.each(invalidIds)("with a %s ID", (_, id) => {
+    it("getFlow returns null without requesting the API", async () => {
+      await expect(getFlow(id)).resolves.toBeNull();
+
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
     it.each([
-      ["getFlow", () => getFlow(id), `/flows/${encodedId}`],
-      ["updateFlow", () => updateFlow(id, { name: "Flow" }), `/flows/${encodedId}`],
-      ["deleteFlow", () => deleteFlow(id), `/flows/${encodedId}`],
-      [
-        "saveFlowGraph",
-        () => saveFlowGraph(id, { nodes: [], edges: [] }),
-        `/flows/${encodedId}/graph`,
-      ],
-    ])("%s keeps the ID in a single path segment", async (_, call, path) => {
-      await call();
+      ["updateFlow", () => updateFlow(id, { name: "Flow" })],
+      ["deleteFlow", () => deleteFlow(id)],
+      ["saveFlowGraph", () => saveFlowGraph(id, { nodes: [], edges: [] })],
+    ])("%s rejects without requesting the API", async (_, call) => {
+      await expect(call()).rejects.toThrow("Invalid workflow ID");
 
-      const url = requestedUrl();
-
-      expect(url.origin).toBe(API_URL);
-      expect(url.pathname).toBe(path);
-      expect(url.search).toBe("");
-      expect(url.hash).toBe("");
+      expect(fetchMock).not.toHaveBeenCalled();
     });
   });
 });
