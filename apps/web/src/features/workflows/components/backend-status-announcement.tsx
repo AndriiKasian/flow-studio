@@ -2,9 +2,10 @@ import type { WorkflowsResult } from "../lib/load-workflows";
 
 import { BackendStatusBadge } from "./backend-status";
 
-// Readiness reflects whether the backend answered the Dashboard's workflows
-// request, shared with WorkflowList so no separate health request is made.
-export async function DemoBackendStatus({
+// Rendered inside the Dashboard's single polite live region, so screen
+// readers hear "Server status: …" when the shared request settles or a retry
+// starts, without re-reading whole cards.
+export async function BackendStatusAnnouncement({
   result,
 }: {
   result: Promise<WorkflowsResult>;

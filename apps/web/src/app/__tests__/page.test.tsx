@@ -1,7 +1,9 @@
 import type { Flow } from "@flow-studio/shared";
-import { renderToReadableStream } from "react-dom/server";
+import { renderToReadableStream, renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { BackendStatus } from "@/features/workflows/components/backend-status";
+import { WorkflowCard } from "@/features/workflows/components/workflow-card";
 import { getFlows } from "@/lib/flows-api";
 
 import Home from "../page";
@@ -34,8 +36,11 @@ const flow: Flow = {
   updatedAt: "2026-10-02T00:00:00.000Z",
 };
 
+const DEMO_NAME = "AI Research Demo";
+const DEMO_HREF = 'href="/workflows/demo"';
 const FALLBACK_TEXT = "Connecting to demo server…";
 const ERROR_TEXT = "Workflows unavailable";
+const DISABLED_LINK = '<a role="link" aria-disabled="true">';
 
 // Labels of the shared backend status badges, in document order.
 function statusLabels(html: string): string[] {
@@ -43,6 +48,27 @@ function statusLabels(html: string): string[] {
     html.matchAll(/Server status: <\/span>(?:<!-- -->)?(\w+)/g),
     ([, label]) => label,
   );
+}
+
+// The shared status badge markup, which every card renders in its footer.
+function statusBadge(html: string): string | undefined {
+  return html.match(
+    /<span class="inline-flex[^"]*"><svg[\s\S]*?<\/svg><span class="sr-only">Server status: <\/span>(?:<!-- -->)?\w+<\/span>/,
+  )?.[0];
+}
+
+function articles(html: string): string[] {
+  return html.match(/<article[\s\S]*?<\/article>/g) ?? [];
+}
+
+function articleFor(html: string, name: string): string {
+  const article = articles(html).find((markup) => markup.includes(name));
+
+  if (!article) {
+    throw new Error(`No card for ${name}`);
+  }
+
+  return article;
 }
 
 // Renders the page as Next.js streams it and returns the HTML sent before any
@@ -75,6 +101,37 @@ async function renderShell() {
   return { shell, readRest: () => readUntil(() => false) };
 }
 
+// Content streamed for the Suspense boundary that a shell placeholder
+// identifies, e.g. "B:0" -> the markup React moves into that boundary.
+function resolvedBoundary(rest: string, boundaryId: string): string {
+  const segmentId = rest.match(
+    new RegExp(`\\$RC\\("${boundaryId}","(S:\\d+)"\\)`),
+  )?.[1];
+  const segment = segmentId
+    ? rest.match(
+        new RegExp(`<div hidden id="${segmentId}">([\\s\\S]*?)</div><script>`),
+      )
+    : null;
+
+  if (!segment) {
+    throw new Error(`Boundary ${boundaryId} did not resolve`);
+  }
+
+  return segment[1];
+}
+
+function pendingFlows(): (flows: Flow[]) => void {
+  let resolveFlows: (flows: Flow[]) => void = () => undefined;
+
+  getFlowsMock.mockReturnValue(
+    new Promise((resolve) => {
+      resolveFlows = resolve;
+    }),
+  );
+
+  return (flows) => resolveFlows(flows);
+}
+
 describe("Dashboard page", () => {
   beforeEach(() => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -85,7 +142,7 @@ describe("Dashboard page", () => {
     vi.restoreAllMocks();
   });
 
-  it("sends the shell and Demo card before workflows load", async () => {
+  it("sends the shell before the backend responds", async () => {
     // Never settles, like a request to an API that is still waking up.
     getFlowsMock.mockReturnValue(new Promise(() => undefined));
 
@@ -94,40 +151,37 @@ describe("Dashboard page", () => {
     expect(getFlowsMock).toHaveBeenCalledTimes(1);
     expect(shell).toContain("Workflows");
     expect(shell).toContain("New Workflow");
-    expect(shell).toContain("AI Research Demo");
-    expect(shell).toContain('href="/workflows/demo"');
     expect(shell).toContain(FALLBACK_TEXT);
     expect(shell).not.toContain(ERROR_TEXT);
-    // The Demo card and the workflow placeholder both show Connecting.
-    expect(statusLabels(shell)).toEqual(["Connecting", "Connecting"]);
   });
 
-  it("streams loaded workflows after the shell", async () => {
-    let resolveFlows: (flows: Flow[]) => void = () => undefined;
-    getFlowsMock.mockReturnValue(
-      new Promise((resolve) => {
-        resolveFlows = resolve;
-      }),
-    );
+  it("shows the full Demo card with navigation disabled while Connecting", async () => {
+    getFlowsMock.mockReturnValue(new Promise(() => undefined));
 
-    const { shell, readRest } = await renderShell();
+    const { shell } = await renderShell();
+    const demo = articleFor(shell, DEMO_NAME);
 
-    expect(shell).toContain(FALLBACK_TEXT);
-    expect(shell).not.toContain(flow.name);
+    expect(demo).toContain("Read-only demo");
+    expect(demo).toContain("Explore a live AI workflow");
+    expect(statusLabels(demo)).toEqual(["Connecting"]);
+    expect(demo).toContain(`${DISABLED_LINK}${DEMO_NAME}</a>`);
+    expect(shell).not.toContain(DEMO_HREF);
+  });
+
+  it("enables Demo navigation once the backend is Ready", async () => {
+    const resolveFlows = pendingFlows();
+    const { readRest } = await renderShell();
 
     resolveFlows([flow]);
-    const rest = await readRest();
+    const demo = articleFor(await readRest(), DEMO_NAME);
 
-    expect(rest).toContain(flow.name);
-    expect(rest).toContain(`href="/workflows/${flow.id}"`);
-    expect(rest).not.toContain(ERROR_TEXT);
-    // One shared request; only the Demo card reports readiness, workflow
-    // cards do not carry a per-workflow status.
-    expect(getFlowsMock).toHaveBeenCalledTimes(1);
-    expect(statusLabels(rest)).toEqual(["Ready"]);
+    expect(statusLabels(demo)).toEqual(["Ready"]);
+    // Title and arrow both link to the Demo.
+    expect(demo.match(new RegExp(DEMO_HREF, "g"))).toHaveLength(2);
+    expect(demo).not.toContain("aria-disabled");
   });
 
-  it("shows a recoverable error without hiding the Demo card", async () => {
+  it("keeps Demo navigation disabled and offers Retry when Unavailable", async () => {
     getFlowsMock.mockRejectedValue(
       new Error("connect ECONNREFUSED 10.0.0.1:3001"),
     );
@@ -135,26 +189,93 @@ describe("Dashboard page", () => {
     const { shell, readRest } = await renderShell();
     const rest = await readRest();
     const html = shell + rest;
+    const demo = articleFor(rest, DEMO_NAME);
 
-    expect(html).toContain("AI Research Demo");
+    expect(getFlowsMock).toHaveBeenCalledTimes(1);
+    expect(statusLabels(demo)).toEqual(["Unavailable"]);
+    expect(demo).toContain(DISABLED_LINK);
+    expect(html).not.toContain(DEMO_HREF);
     expect(html).toContain(ERROR_TEXT);
     expect(html).toContain("Retry");
     expect(html).not.toContain("ECONNREFUSED");
-    expect(getFlowsMock).toHaveBeenCalledTimes(1);
-    expect(statusLabels(rest)).toEqual(["Unavailable", "Unavailable"]);
   });
 
-  it("renders no workflow cards or error for an empty list", async () => {
+  it("renders the same Ready footer on the Demo and workflow cards", async () => {
+    const resolveFlows = pendingFlows();
+    const { shell, readRest } = await renderShell();
+
+    expect(shell).not.toContain(flow.name);
+
+    resolveFlows([flow]);
+    const rest = await readRest();
+    const demo = articleFor(rest, DEMO_NAME);
+    const workflow = articleFor(rest, flow.name);
+
+    expect(getFlowsMock).toHaveBeenCalledTimes(1);
+    expect(statusBadge(workflow)).toBeDefined();
+    expect(statusBadge(workflow)).toBe(statusBadge(demo));
+    expect(statusLabels(workflow)).toEqual(["Ready"]);
+    expect(workflow).toContain(`href="/workflows/${flow.id}"`);
+    // The update date moves to the card header and is kept as metadata.
+    expect(workflow).toMatch(
+      new RegExp(
+        `Updated(?:<!-- -->)? <time dateTime="${flow.updatedAt}">Oct 2, 2026</time>`,
+      ),
+    );
+    expect(rest).not.toContain(ERROR_TEXT);
+  });
+
+  it("renders a loading placeholder in the shared card structure", async () => {
+    getFlowsMock.mockReturnValue(new Promise(() => undefined));
+
+    const { shell } = await renderShell();
+    const placeholder = shell.slice(
+      shell.lastIndexOf('<div class="bg-card', shell.indexOf(FALLBACK_TEXT)),
+      shell.indexOf("</main>"),
+    );
+
+    expect(placeholder).toContain("size-10 shrink-0 animate-pulse rounded-lg");
+    expect(statusBadge(placeholder)).toBeDefined();
+    expect(statusBadge(placeholder)).toBe(
+      statusBadge(articleFor(shell, DEMO_NAME)),
+    );
+    // One spinner (the status badge), no invented workflow content or links.
+    expect(placeholder.match(/animate-spin/g)).toHaveLength(1);
+    expect(placeholder).not.toContain("href=");
+    expect(placeholder).not.toContain("Updated");
+  });
+
+  it("renders only the Ready Demo card for an empty list", async () => {
     getFlowsMock.mockResolvedValue([]);
 
-    const { shell, readRest } = await renderShell();
+    const { readRest } = await renderShell();
     const rest = await readRest();
-    const html = shell + rest;
 
-    expect(html).toContain("AI Research Demo");
-    expect(html).not.toContain(ERROR_TEXT);
-    expect(html.match(/<article/g)).toHaveLength(1);
-    expect(statusLabels(rest)).toEqual(["Ready"]);
+    expect(articles(rest)).toHaveLength(1);
+    expect(statusLabels(articleFor(rest, DEMO_NAME))).toEqual(["Ready"]);
+    expect(rest).toContain(DEMO_HREF);
+    expect(rest).not.toContain(ERROR_TEXT);
+  });
+
+  it("announces status changes through a single polite live region", async () => {
+    const resolveFlows = pendingFlows();
+    const { shell, readRest } = await renderShell();
+
+    const liveRegions = shell.match(/aria-live="[^"]*"/g) ?? [];
+    const region = shell.match(
+      /<p aria-live="polite" class="sr-only"><!--\$\?--><template id="(B:\d+)"><\/template><!--\/\$--><\/p>/,
+    );
+
+    // Silent while Connecting; badges inside cards are not live regions.
+    expect(liveRegions).toHaveLength(1);
+    expect(region).not.toBeNull();
+    expect(shell).not.toContain('role="status"');
+
+    resolveFlows([flow]);
+    const announcement = resolvedBoundary(await readRest(), region?.[1] ?? "");
+
+    expect(statusLabels(announcement)).toEqual(["Ready"]);
+    expect(announcement).not.toContain(DEMO_NAME);
   });
 
   it("requests workflows again on every render", async () => {
@@ -170,5 +291,30 @@ describe("Dashboard page", () => {
     expect(failed).toContain(ERROR_TEXT);
     expect(recovered).toContain(flow.name);
     expect(recovered).not.toContain(ERROR_TEXT);
+  });
+});
+
+describe("WorkflowCard navigation guard", () => {
+  it.each<BackendStatus>(["connecting", "unavailable"])(
+    "renders no focusable or activatable link while %s",
+    (status) => {
+      const html = renderToString(<WorkflowCard flow={flow} status={status} />);
+
+      // An <a> without href is neither in the tab order nor activated by
+      // Enter or click, so the disabled title cannot navigate.
+      expect(html).toContain(`${DISABLED_LINK}${flow.name}</a>`);
+      expect(html).not.toContain("href=");
+      expect(html).not.toContain("tabindex");
+      expect(html).not.toContain(`aria-label="Open ${flow.name}"`);
+    },
+  );
+
+  it("links the title and arrow when Ready", () => {
+    const html = renderToString(<WorkflowCard flow={flow} status="ready" />);
+
+    expect(
+      html.match(new RegExp(`href="/workflows/${flow.id}"`, "g")),
+    ).toHaveLength(2);
+    expect(html).not.toContain("aria-disabled");
   });
 });

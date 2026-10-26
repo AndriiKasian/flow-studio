@@ -1,11 +1,9 @@
 import { Suspense } from "react";
 
 import { AppHeader } from "@/components/layout/app-header";
-import {
-  BackendRetryProvider,
-  BackendStatusBadge,
-} from "@/features/workflows/components/backend-status";
-import { DemoBackendStatus } from "@/features/workflows/components/demo-backend-status";
+import { BackendRetryProvider } from "@/features/workflows/components/backend-status";
+import { BackendStatusAnnouncement } from "@/features/workflows/components/backend-status-announcement";
+import { DemoWorkflowCard } from "@/features/workflows/components/demo-workflow-card";
 import { WorkflowCard } from "@/features/workflows/components/workflow-card";
 import { CreateWorkflowDialog } from "@/features/workflows/components/create-workflow-dialog";
 import { WorkflowList } from "@/features/workflows/components/workflow-list";
@@ -18,8 +16,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 90;
 
 export default function Home() {
-  // Started without awaiting so the shell streams immediately; the Demo card
-  // status and the workflow list share this single backend request.
+  // Started without awaiting so the shell streams immediately; the Demo card,
+  // the status announcement and the workflow list share this single request.
   const workflows = loadWorkflows();
 
   return (
@@ -42,20 +40,21 @@ export default function Home() {
         </div>
 
         <BackendRetryProvider>
+          {/* The only live region for backend status: it announces when
+              Suspense swaps in the result, while the visible card badges
+              stay silent. */}
+          <p aria-live="polite" className="sr-only">
+            <Suspense fallback={null}>
+              <BackendStatusAnnouncement result={workflows} />
+            </Suspense>
+          </p>
+
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <WorkflowCard
-              variant="demo"
-              status={
-                // Announces the status when Suspense swaps in the result.
-                <span aria-live="polite">
-                  <Suspense
-                    fallback={<BackendStatusBadge status="connecting" />}
-                  >
-                    <DemoBackendStatus result={workflows} />
-                  </Suspense>
-                </span>
-              }
-            />
+            <Suspense
+              fallback={<WorkflowCard variant="demo" status="connecting" />}
+            >
+              <DemoWorkflowCard result={workflows} />
+            </Suspense>
 
             <Suspense fallback={<WorkflowListFallback />}>
               <WorkflowList result={workflows} />

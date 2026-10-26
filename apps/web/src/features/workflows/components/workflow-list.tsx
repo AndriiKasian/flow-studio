@@ -17,6 +17,6 @@ export async function WorkflowList({
   }
 
   return workflows.flows.map((flow) => (
-    <WorkflowCard key={flow.id} flow={flow} />
+    <WorkflowCard key={flow.id} flow={flow} status="ready" />
   ));
 }
