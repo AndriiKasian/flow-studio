@@ -1,23 +1,8 @@
-"use client";
+import { TriangleAlert } from "lucide-react";
 
-import { RotateCw, TriangleAlert } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useTransition } from "react";
-
-import { Button } from "@/components/ui/button";
+import { BackendRetryButton, BackendStatusBadge } from "./backend-status";
 
 export function WorkflowListError() {
-  const router = useRouter();
-  const [isRetrying, startRetry] = useTransition();
-
-  function handleRetry() {
-    // The Dashboard is dynamic and getFlows does not cache, so a refresh
-    // re-renders the workflow list with a new API request.
-    startRetry(() => {
-      router.refresh();
-    });
-  }
-
   return (
     <div
       role="alert"
@@ -34,16 +19,11 @@ export function WorkflowListError() {
         again.
       </p>
 
-      <Button
-        variant="outline"
-        size="sm"
-        className="mt-6"
-        onClick={handleRetry}
-        disabled={isRetrying}
-      >
-        <RotateCw className={isRetrying ? "animate-spin" : undefined} />
-        {isRetrying ? "Retrying…" : "Retry"}
-      </Button>
+      <div className="mt-6 flex items-center justify-between">
+        <BackendStatusBadge status="unavailable" />
+
+        <BackendRetryButton />
+      </div>
     </div>
   );
 }

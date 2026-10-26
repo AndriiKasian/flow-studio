@@ -1,6 +1,7 @@
 import type { Flow } from "@flow-studio/shared";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { FlowStudioLogo } from "@/components/ui/flow-studio-logo";
 
@@ -10,10 +11,13 @@ type WorkflowCardProps =
   | {
       variant: "demo";
       flow?: never;
+      // Backend readiness, shown in place of the update date.
+      status: ReactNode;
     }
   | {
       variant?: "default";
       flow: Flow;
+      status?: never;
     };
 
 export function WorkflowCard(props: WorkflowCardProps) {
@@ -59,15 +63,17 @@ export function WorkflowCard(props: WorkflowCardProps) {
       </p>
 
       <div className="mt-6 flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">
-          {props.variant === "demo"
-            ? "Public demo"
-            : `Updated ${new Intl.DateTimeFormat("en", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              }).format(new Date(props.flow.updatedAt))}`}
-        </span>
+        {props.variant === "demo" ? (
+          props.status
+        ) : (
+          <span className="text-xs text-muted-foreground">
+            {`Updated ${new Intl.DateTimeFormat("en", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            }).format(new Date(props.flow.updatedAt))}`}
+          </span>
+        )}
 
         <Link
           href={workflowHref}

@@ -1,10 +1,16 @@
 import { Suspense } from "react";
 
 import { AppHeader } from "@/components/layout/app-header";
+import {
+  BackendRetryProvider,
+  BackendStatusBadge,
+} from "@/features/workflows/components/backend-status";
+import { DemoBackendStatus } from "@/features/workflows/components/demo-backend-status";
 import { WorkflowCard } from "@/features/workflows/components/workflow-card";
 import { CreateWorkflowDialog } from "@/features/workflows/components/create-workflow-dialog";
 import { WorkflowList } from "@/features/workflows/components/workflow-list";
 import { WorkflowListFallback } from "@/features/workflows/components/workflow-list-fallback";
+import { loadWorkflows } from "@/features/workflows/lib/load-workflows";
 
 export const dynamic = "force-dynamic";
 // The workflow list streams in after the API wakes from a cold start; keep
@@ -12,6 +18,10 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 90;
 
 export default function Home() {
+  // Started without awaiting so the shell streams immediately; the Demo card
+  // status and the workflow list share this single backend request.
+  const workflows = loadWorkflows();
+
   return (
     <>
       <AppHeader />
@@ -31,13 +41,27 @@ export default function Home() {
           <CreateWorkflowDialog />
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <WorkflowCard variant="demo" />
+        <BackendRetryProvider>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <WorkflowCard
+              variant="demo"
+              status={
+                // Announces the status when Suspense swaps in the result.
+                <span aria-live="polite">
+                  <Suspense
+                    fallback={<BackendStatusBadge status="connecting" />}
+                  >
+                    <DemoBackendStatus result={workflows} />
+                  </Suspense>
+                </span>
+              }
+            />
 
-          <Suspense fallback={<WorkflowListFallback />}>
-            <WorkflowList />
-          </Suspense>
-        </div>
+            <Suspense fallback={<WorkflowListFallback />}>
+              <WorkflowList result={workflows} />
+            </Suspense>
+          </div>
+        </BackendRetryProvider>
       </main>
     </>
   );

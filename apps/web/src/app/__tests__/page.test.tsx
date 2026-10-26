@@ -37,6 +37,14 @@ const flow: Flow = {
 const FALLBACK_TEXT = "Connecting to demo server…";
 const ERROR_TEXT = "Workflows unavailable";
 
+// Labels of the shared backend status badges, in document order.
+function statusLabels(html: string): string[] {
+  return Array.from(
+    html.matchAll(/Server status: <\/span>(?:<!-- -->)?(\w+)/g),
+    ([, label]) => label,
+  );
+}
+
 // Renders the page as Next.js streams it and returns the HTML sent before any
 // Suspense boundary resolves, plus a reader for the remaining stream.
 async function renderShell() {
@@ -90,6 +98,8 @@ describe("Dashboard page", () => {
     expect(shell).toContain('href="/workflows/demo"');
     expect(shell).toContain(FALLBACK_TEXT);
     expect(shell).not.toContain(ERROR_TEXT);
+    // The Demo card and the workflow placeholder both show Connecting.
+    expect(statusLabels(shell)).toEqual(["Connecting", "Connecting"]);
   });
 
   it("streams loaded workflows after the shell", async () => {
@@ -111,6 +121,10 @@ describe("Dashboard page", () => {
     expect(rest).toContain(flow.name);
     expect(rest).toContain(`href="/workflows/${flow.id}"`);
     expect(rest).not.toContain(ERROR_TEXT);
+    // One shared request; only the Demo card reports readiness, workflow
+    // cards do not carry a per-workflow status.
+    expect(getFlowsMock).toHaveBeenCalledTimes(1);
+    expect(statusLabels(rest)).toEqual(["Ready"]);
   });
 
   it("shows a recoverable error without hiding the Demo card", async () => {
@@ -119,23 +133,28 @@ describe("Dashboard page", () => {
     );
 
     const { shell, readRest } = await renderShell();
-    const html = shell + (await readRest());
+    const rest = await readRest();
+    const html = shell + rest;
 
     expect(html).toContain("AI Research Demo");
     expect(html).toContain(ERROR_TEXT);
     expect(html).toContain("Retry");
     expect(html).not.toContain("ECONNREFUSED");
+    expect(getFlowsMock).toHaveBeenCalledTimes(1);
+    expect(statusLabels(rest)).toEqual(["Unavailable", "Unavailable"]);
   });
 
   it("renders no workflow cards or error for an empty list", async () => {
     getFlowsMock.mockResolvedValue([]);
 
     const { shell, readRest } = await renderShell();
-    const html = shell + (await readRest());
+    const rest = await readRest();
+    const html = shell + rest;
 
     expect(html).toContain("AI Research Demo");
     expect(html).not.toContain(ERROR_TEXT);
     expect(html.match(/<article/g)).toHaveLength(1);
+    expect(statusLabels(rest)).toEqual(["Ready"]);
   });
 
   it("requests workflows again on every render", async () => {
