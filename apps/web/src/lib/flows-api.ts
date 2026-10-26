@@ -42,8 +42,16 @@ async function getTrustedProxyHeaders(): Promise<Record<string, string>> {
   );
 }
 
+// Long enough for the API host to wake from a cold start (about a minute),
+// and shorter than the Dashboard's maxDuration so the timeout, not the
+// platform, ends a request to an unavailable API.
+export const FLOWS_REQUEST_TIMEOUT_MS = 75_000;
+
 export async function getFlows(): Promise<Flow[]> {
-  const response = await fetch(`${getApiUrl()}/flows`);
+  const response = await fetch(`${getApiUrl()}/flows`, {
+    cache: "no-store",
+    signal: AbortSignal.timeout(FLOWS_REQUEST_TIMEOUT_MS),
+  });
 
   if (!response.ok) {
     throw new Error("Failed to fetch flows");

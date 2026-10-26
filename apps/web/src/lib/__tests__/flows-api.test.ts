@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { deleteFlow, getFlow, saveFlowGraph, updateFlow } from "../flows-api";
+import {
+  deleteFlow,
+  getFlow,
+  getFlows,
+  saveFlowGraph,
+  updateFlow,
+} from "../flows-api";
 
 vi.mock("next/headers", () => ({
   headers: async () => new Headers(),
@@ -78,5 +84,37 @@ describe("flows API workflow IDs", () => {
 
       expect(fetchMock).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("getFlows", () => {
+  beforeEach(() => {
+    vi.stubEnv("API_URL", API_URL);
+    vi.stubGlobal("fetch", fetchMock);
+    fetchMock.mockResolvedValue(Response.json([]));
+  });
+
+  afterEach(() => {
+    fetchMock.mockReset();
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  // Retry after a failed load must reach the API rather than reuse a cached
+  // response, and a request to an unavailable API must not hang indefinitely.
+  it("requests uncached workflows with a timeout", async () => {
+    await getFlows();
+
+    const [, init] = fetchMock.mock.calls[0] ?? [];
+
+    expect(requestedUrl().pathname).toBe("/flows");
+    expect(init?.cache).toBe("no-store");
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("rejects when the API responds with an error", async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 503 }));
+
+    await expect(getFlows()).rejects.toThrow("Failed to fetch flows");
   });
 });

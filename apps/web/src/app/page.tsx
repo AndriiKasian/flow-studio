@@ -1,13 +1,17 @@
+import { Suspense } from "react";
+
 import { AppHeader } from "@/components/layout/app-header";
 import { WorkflowCard } from "@/features/workflows/components/workflow-card";
 import { CreateWorkflowDialog } from "@/features/workflows/components/create-workflow-dialog";
-import { getFlows } from "@/lib/flows-api";
+import { WorkflowList } from "@/features/workflows/components/workflow-list";
+import { WorkflowListFallback } from "@/features/workflows/components/workflow-list-fallback";
 
 export const dynamic = "force-dynamic";
+// The workflow list streams in after the API wakes from a cold start; keep
+// the function alive longer than FLOWS_REQUEST_TIMEOUT_MS.
+export const maxDuration = 90;
 
-export default async function Home() {
-  const flows = await getFlows();
-
+export default function Home() {
   return (
     <>
       <AppHeader />
@@ -30,9 +34,9 @@ export default async function Home() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <WorkflowCard variant="demo" />
 
-          {flows.map((flow) => (
-            <WorkflowCard key={flow.id} flow={flow} />
-          ))}
+          <Suspense fallback={<WorkflowListFallback />}>
+            <WorkflowList />
+          </Suspense>
         </div>
       </main>
     </>
