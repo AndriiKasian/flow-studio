@@ -55,8 +55,9 @@ export function applyWorkflowExecutionEvent(
 }
 
 // Used when the execution stream ends without flow:stop, so no node
-// can be left running indefinitely.
-export function failRunningNodes(
+// can be left running indefinitely. The run's result is unknown, so these
+// nodes are shown as skipped (dimmed), not as confirmed failures.
+export function skipRunningNodes(
   state: WorkflowExecutionState,
 ): WorkflowExecutionState {
   const runningNodeIds = Object.keys(state.nodeStatuses).filter(
@@ -70,7 +71,7 @@ export function failRunningNodes(
   const nodeStatuses = { ...state.nodeStatuses };
 
   for (const nodeId of runningNodeIds) {
-    nodeStatuses[nodeId] = "failed";
+    nodeStatuses[nodeId] = "skipped";
   }
 
   return { ...state, nodeStatuses };

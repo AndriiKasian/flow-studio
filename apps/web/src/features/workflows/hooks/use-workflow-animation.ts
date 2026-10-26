@@ -5,7 +5,7 @@ import type { WorkflowExecutionEvent } from "@flow-studio/shared";
 
 import {
   applyWorkflowExecutionEvent,
-  failRunningNodes,
+  skipRunningNodes,
   initialWorkflowExecutionState,
   type WorkflowExecutionState,
 } from "../lib/workflow-execution-status";
@@ -102,7 +102,7 @@ export function useWorkflowAnimation() {
       if (controller.signal.aborted) return;
 
       nodeStartTimesRef.current.clear();
-      setExecutionState(failRunningNodes);
+      setExecutionState(skipRunningNodes);
     });
 
     await queueRef.current;

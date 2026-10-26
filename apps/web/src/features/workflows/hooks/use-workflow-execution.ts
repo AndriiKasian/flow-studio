@@ -1,21 +1,33 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  fetchEventSource,
-  type EventSourceMessage,
-} from "@microsoft/fetch-event-source";
 import type {
   WorkflowExecutionEvent,
   WorkflowGraph,
 } from "@flow-studio/shared";
 
-class ExecutionStreamError extends Error {}
+import {
+  streamExecution,
+  type ExecutionOutcome,
+} from "../lib/execution-stream";
 
 interface UseWorkflowExecutionOptions {
   flowId: string;
   onEvent?: (event: WorkflowExecutionEvent) => void;
   onComplete?: () => Promise<void>;
+}
+
+function getStartErrorMessage(body: unknown, status: number): string {
+  if (
+    typeof body === "object" &&
+    body !== null &&
+    "error" in body &&
+    typeof body.error === "string"
+  ) {
+    return body.error;
+  }
+
+  return `Failed to start workflow: HTTP ${status}`;
 }
 
 export function useWorkflowExecution({
@@ -34,105 +46,30 @@ export function useWorkflowExecution({
     onCompleteRef.current = onComplete;
   }, [onEvent, onComplete]);
 
+  // Resolves with the run's outcome, or null when a run is already active.
   const run = useCallback(
-    async (graph: WorkflowGraph) => {
-      if (controllerRef.current) return;
+    async (graph: WorkflowGraph): Promise<ExecutionOutcome | null> => {
+      if (controllerRef.current) return null;
 
       const controller = new AbortController();
       controllerRef.current = controller;
       setIsRunning(true);
 
-      let completed = false;
-
       try {
-        await fetchEventSource(
-          `/api/flows/${encodeURIComponent(flowId)}/execute/stream`,
-          {
-            method: "POST",
-            headers: {
-              Accept: "text/event-stream",
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(graph),
-            signal: controller.signal,
-            openWhenHidden: true,
+        const outcome = await streamExecution({
+          url: `/api/flows/${encodeURIComponent(flowId)}/execute/stream`,
+          body: JSON.stringify(graph),
+          controller,
+          onEvent: (event) => onEventRef.current?.(event),
+          getStartErrorMessage,
+        });
 
-            async onopen(response) {
-              if (!response.ok) {
-                let errorMessage =
-                  `Failed to start workflow: HTTP ${response.status}`;
-
-                try {
-                  const body: unknown = await response.json();
-
-                  if (
-                    typeof body === "object" &&
-                    body !== null &&
-                    "error" in body &&
-                    typeof body.error === "string"
-                  ) {
-                    errorMessage = body.error;
-                  }
-                } catch {
-                  // Keep the HTTP error if the response is not JSON.
-                }
-
-                throw new ExecutionStreamError(errorMessage);
-              }
-
-              if (
-                !response.headers
-                  .get("content-type")
-                  ?.includes("text/event-stream")
-              ) {
-                throw new ExecutionStreamError(
-                  "Invalid execution stream response",
-                );
-              }
-            },
-
-            onmessage(message: EventSourceMessage) {
-              let event: WorkflowExecutionEvent;
-
-              try {
-                event = JSON.parse(
-                  message.data,
-                ) as WorkflowExecutionEvent;
-              } catch {
-                throw new ExecutionStreamError(
-                  "Invalid execution event",
-                );
-              }
-
-              onEventRef.current?.(event);
-
-              if (event.type === "flow:stop") {
-                completed = true;
-                controller.abort();
-              }
-            },
-
-            onclose() {
-              if (!completed) {
-                throw new ExecutionStreamError(
-                  "Execution stream closed unexpectedly",
-                );
-              }
-            },
-
-            onerror(error) {
-              throw error;
-            },
-          },
-        );
-
-        if (!completed) {
-          throw new ExecutionStreamError(
-            "Execution finished without flow:stop",
-          );
+        // The run reported its result; let the visualization finish first.
+        if (outcome.status === "completed" || outcome.status === "failed") {
+          await onCompleteRef.current?.();
         }
 
-        await onCompleteRef.current?.();
+        return outcome;
       } finally {
         controller.abort();
 

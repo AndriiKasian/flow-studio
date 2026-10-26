@@ -1,17 +1,12 @@
 "use client";
 
-import { useCallback, useRef } from "react";
-import type { WorkflowExecutionEvent } from "@flow-studio/shared";
+import { useCallback } from "react";
 
+import { notifyExecutionOutcome } from "../lib/execution-notification";
 import { prepareWorkflowGraph } from "../lib/prepare-workflow-graph";
 import type { WorkflowCanvasGraph } from "./use-workflow-canvas";
 import { useWorkflowAnimation } from "./use-workflow-animation";
 import { useWorkflowExecution } from "./use-workflow-execution";
-
-type FlowStopEvent = Extract<
-  WorkflowExecutionEvent,
-  { type: "flow:stop" }
->;
 
 interface UseWorkflowEditorExecutionOptions {
   flowId: string;
@@ -31,17 +26,9 @@ export function useWorkflowEditorExecution({
   const { executionState, reset, enqueue, flush, interrupt } =
     useWorkflowAnimation();
 
-  const flowStopEventRef = useRef<FlowStopEvent | null>(null);
-
   const { run, isRunning } = useWorkflowExecution({
     flowId,
-    onEvent: (event) => {
-      enqueue(event);
-
-      if (event.type === "flow:stop") {
-        flowStopEventRef.current = event;
-      }
-    },
+    onEvent: enqueue,
     onComplete: flush,
   });
 
@@ -60,29 +47,16 @@ export function useWorkflowEditorExecution({
       return;
     }
 
-    flowStopEventRef.current = null;
     reset();
 
-    try {
-      await run(graph);
+    const outcome = await run(graph);
 
-      const getFlowStopEvent = () => flowStopEventRef.current;
-      const event = getFlowStopEvent();
+    if (!outcome) return;
 
-      if (!event) return;
+    notifyExecutionOutcome(outcome, { onSuccess, onError });
 
-      if (event.status === "completed") {
-        onSuccess("Workflow executed successfully");
-      } else {
-        onError(event.error ?? "Workflow execution failed");
-      }
-    } catch (error) {
-      onError(
-        error instanceof Error
-          ? error.message
-          : "Failed to execute workflow",
-      );
-
+    // Without a reported result, stop nodes still shown as running.
+    if (outcome.status === "rejected" || outcome.status === "interrupted") {
       await interrupt();
     }
   }, [
