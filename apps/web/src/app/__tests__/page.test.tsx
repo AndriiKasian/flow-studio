@@ -57,6 +57,11 @@ function statusBadge(html: string): string | undefined {
   )?.[0];
 }
 
+// The card header icon container, including the FlowStudioLogo.
+function cardIcon(html: string): string | undefined {
+  return html.match(/<div class="from-brand\/15[^"]*"><svg[\s\S]*?<\/svg><\/div>/)?.[0];
+}
+
 function articles(html: string): string[] {
   return html.match(/<article[\s\S]*?<\/article>/g) ?? [];
 }
@@ -234,7 +239,11 @@ describe("Dashboard page", () => {
       shell.indexOf("</main>"),
     );
 
-    expect(placeholder).toContain("size-10 shrink-0 animate-pulse rounded-lg");
+    // Same icon container and logo as the real cards; the unknown update
+    // date remains a skeleton.
+    expect(cardIcon(placeholder)).toBeDefined();
+    expect(cardIcon(placeholder)).toBe(cardIcon(articleFor(shell, DEMO_NAME)));
+    expect(placeholder).toContain("bg-muted h-3 w-20 animate-pulse rounded");
     expect(statusBadge(placeholder)).toBeDefined();
     expect(statusBadge(placeholder)).toBe(
       statusBadge(articleFor(shell, DEMO_NAME)),

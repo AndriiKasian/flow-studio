@@ -20,6 +20,15 @@ type WorkflowCardProps =
       status: BackendStatus;
     };
 
+// Shared with the loading placeholder so both render the same card header.
+export function WorkflowCardIcon() {
+  return (
+    <div className="from-brand/15 to-brand-secondary/15 flex size-10 shrink-0 items-center justify-center rounded-lg bg-linear-to-br">
+      <FlowStudioLogo size={24} />
+    </div>
+  );
+}
+
 export function WorkflowCard(props: WorkflowCardProps) {
   const isDemo = props.variant === "demo";
 
@@ -47,9 +56,7 @@ export function WorkflowCard(props: WorkflowCardProps) {
       )}
     >
       <div className="mb-5 flex items-start justify-between gap-3">
-        <div className="from-brand/15 to-brand-secondary/15 flex size-10 shrink-0 items-center justify-center rounded-lg bg-linear-to-br">
-          <FlowStudioLogo size={24} />
-        </div>
+        <WorkflowCardIcon />
 
         {props.variant === "demo" ? (
           <span className="text-xs text-muted-foreground">
