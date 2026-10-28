@@ -43,8 +43,8 @@ async function getTrustedProxyHeaders(): Promise<Record<string, string>> {
 }
 
 // Long enough for the API host to wake from a cold start (about a minute),
-// and shorter than the Dashboard's maxDuration so the timeout, not the
-// platform, ends a request to an unavailable API.
+// and shorter than the maxDuration of the pages that load workflows so the
+// timeout, not the platform, ends a request to an unavailable API.
 export const FLOWS_REQUEST_TIMEOUT_MS = 75_000;
 
 export async function getFlows(): Promise<Flow[]> {
@@ -65,7 +65,10 @@ export async function getFlow(id: string): Promise<Flow | null> {
     return null;
   }
 
-  const response = await fetch(getFlowUrl(id));
+  const response = await fetch(getFlowUrl(id), {
+    cache: "no-store",
+    signal: AbortSignal.timeout(FLOWS_REQUEST_TIMEOUT_MS),
+  });
 
   if (response.status === 404) {
     return null;

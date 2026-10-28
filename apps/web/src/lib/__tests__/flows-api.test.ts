@@ -118,3 +118,40 @@ describe("getFlows", () => {
     await expect(getFlows()).rejects.toThrow("Failed to fetch flows");
   });
 });
+
+describe("getFlow", () => {
+  beforeEach(() => {
+    vi.stubEnv("API_URL", API_URL);
+    vi.stubGlobal("fetch", fetchMock);
+    fetchMock.mockResolvedValue(Response.json({}));
+  });
+
+  afterEach(() => {
+    fetchMock.mockReset();
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  // Like getFlows: Retry must reach the API, and a request to an API that
+  // never wakes must end so the editor can show Unavailable.
+  it("requests an uncached workflow with a timeout", async () => {
+    await getFlow(FLOW_ID);
+
+    const [, init] = fetchMock.mock.calls[0] ?? [];
+
+    expect(init?.cache).toBe("no-store");
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("returns null only when the API responds 404", async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 404 }));
+
+    await expect(getFlow(FLOW_ID)).resolves.toBeNull();
+  });
+
+  it("rejects when the API responds with an error", async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 503 }));
+
+    await expect(getFlow(FLOW_ID)).rejects.toThrow("Failed to fetch flow");
+  });
+});

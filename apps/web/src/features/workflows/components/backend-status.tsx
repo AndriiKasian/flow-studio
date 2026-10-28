@@ -18,15 +18,15 @@ const BackendRetryContext = createContext<BackendRetryContextValue | null>(
   null,
 );
 
-// Shares one Retry transition so every status badge on the Dashboard shows
+// Shares one Retry transition so every status badge on the page shows
 // Connecting while the retried request is in flight.
 export function BackendRetryProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [isRetrying, startRetry] = useTransition();
 
   function retry() {
-    // The Dashboard is dynamic and getFlows does not cache, so a refresh
-    // re-renders the page with a new API request.
+    // Pages that load from the API are dynamic and their requests are not
+    // cached, so a refresh re-renders the page with a new API request.
     startRetry(() => {
       router.refresh();
     });

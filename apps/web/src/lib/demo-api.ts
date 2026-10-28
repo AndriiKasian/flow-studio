@@ -1,5 +1,7 @@
 import type { WorkflowGraph } from "@flow-studio/shared";
 
+import { FLOWS_REQUEST_TIMEOUT_MS } from "./flows-api";
+
 function getApiUrl(): string {
   const apiUrl = process.env.API_URL;
 
@@ -13,6 +15,7 @@ function getApiUrl(): string {
 export async function getDemoWorkflow(): Promise<WorkflowGraph> {
   const response = await fetch(`${getApiUrl()}/api/demo/workflow`, {
     cache: "no-store",
+    signal: AbortSignal.timeout(FLOWS_REQUEST_TIMEOUT_MS),
   });
 
   if (!response.ok) {
