@@ -2,6 +2,10 @@ import OpenAI from "openai";
 
 import type { WorkflowGraph } from "@flow-studio/shared";
 
+import {
+  logFailure,
+  logProviderError,
+} from "../../lib/error-diagnostics";
 import type { NodeInput } from "../collect-node-inputs";
 import type { NodeExecutionResult } from "../types";
 
@@ -49,6 +53,13 @@ export async function executeLlm(
   const model = process.env.OPENAI_MODEL;
 
   if (!apiKey || !model) {
+    logFailure("LLM provider is not configured", {
+      missingVariables: [
+        ...(apiKey ? [] : ["OPENAI_API_KEY"]),
+        ...(model ? [] : ["OPENAI_MODEL"]),
+      ],
+    });
+
     return {
       status: "failed",
       error: "LLM provider is not configured",
@@ -85,6 +96,12 @@ export async function executeLlm(
     const output = response.output_text?.trim();
 
     if (!output) {
+      logFailure("LLM returned an empty response", {
+        requestId: response._request_id ?? undefined,
+        responseStatus: response.status,
+        incompleteReason: response.incomplete_details?.reason,
+      });
+
       return {
         status: "failed",
         error: "LLM returned an empty response",
@@ -97,12 +114,19 @@ export async function executeLlm(
         response: output,
       },
     };
-  } catch {
+  } catch (error) {
+    if (signal?.aborted) {
+      return {
+        status: "failed",
+        error: "LLM request was cancelled",
+      };
+    }
+
+    logProviderError("LLM request failed", error);
+
     return {
       status: "failed",
-      error: signal?.aborted
-        ? "LLM request was cancelled"
-        : "LLM request failed",
+      error: "LLM request failed",
     };
   }
 }

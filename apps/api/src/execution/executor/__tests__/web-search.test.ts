@@ -6,6 +6,7 @@ import {
   expect,
   it,
   vi,
+  type MockInstance,
 } from "vitest";
 
 import type { NodeInput } from "../../collect-node-inputs";
@@ -50,6 +51,7 @@ describe("executeWebSearch", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it("returns normalized search results", async () => {
@@ -191,5 +193,133 @@ describe("executeWebSearch", () => {
     expect(JSON.stringify(result)).not.toContain(
       "Sensitive provider error",
     );
+  });
+
+  describe("provider diagnostics", () => {
+    const QUERY = "Confidential search query";
+
+    let consoleError: MockInstance<typeof console.error>;
+
+    beforeEach(() => {
+      // Production mode: logs must contain only allowlisted fields.
+      vi.stubEnv("NODE_ENV", "production");
+
+      consoleError = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => undefined);
+    });
+
+    function loggedText(): string {
+      return JSON.stringify(consoleError.mock.calls);
+    }
+
+    it("logs the HTTP status of a failed provider response", async () => {
+      fetchMock.mockResolvedValue(
+        new Response(`Invalid key test-serper-key for ${QUERY}`, {
+          status: 403,
+        }),
+      );
+
+      const result = await executeWebSearch(
+        createNode(),
+        [createInput(QUERY)],
+      );
+
+      expect(result).toEqual({
+        status: "failed",
+        error: "Web Search request failed",
+      });
+      expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+        "Web Search request failed",
+        { status: 403 },
+      );
+      expect(loggedText()).not.toContain("test-serper-key");
+      expect(loggedText()).not.toContain(QUERY);
+    });
+
+    it("logs a request timeout when the user has not cancelled", async () => {
+      const controller = new AbortController();
+
+      fetchMock.mockRejectedValue(
+        new DOMException("The operation timed out", "TimeoutError"),
+      );
+
+      const result = await executeWebSearch(
+        createNode(),
+        [createInput(QUERY)],
+        controller.signal,
+      );
+
+      expect(result).toEqual({
+        status: "failed",
+        error: "Web Search request failed",
+      });
+      expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+        "Web Search request failed",
+        { name: "TimeoutError" },
+      );
+    });
+
+    it("sanitizes provider errors in local development", async () => {
+      vi.stubEnv("NODE_ENV", "development");
+
+      fetchMock.mockRejectedValue(
+        new TypeError(`fetch failed for ${QUERY} with test-serper-key`),
+      );
+
+      await executeWebSearch(createNode(), [createInput(QUERY)]);
+
+      expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+        "Web Search request failed",
+        { name: "TypeError" },
+      );
+    });
+
+    it("logs network errors without their message", async () => {
+      fetchMock.mockRejectedValue(
+        new TypeError(`fetch failed for ${QUERY} with test-serper-key`),
+      );
+
+      await executeWebSearch(createNode(), [createInput(QUERY)]);
+
+      expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+        "Web Search request failed",
+        { name: "TypeError" },
+      );
+      expect(loggedText()).not.toContain("test-serper-key");
+      expect(loggedText()).not.toContain(QUERY);
+    });
+
+    it("logs missing configuration by variable name only", async () => {
+      vi.stubEnv("SERPER_API_KEY", "");
+
+      await executeWebSearch(createNode(), [createInput(QUERY)]);
+
+      expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+        "Web Search provider is not configured",
+        { missingVariables: ["SERPER_API_KEY"] },
+      );
+    });
+
+    it("does not log an expected cancellation", async () => {
+      const controller = new AbortController();
+
+      fetchMock.mockImplementationOnce(() => {
+        controller.abort();
+        return Promise.reject(new DOMException("Aborted", "AbortError"));
+      });
+
+      const result = await executeWebSearch(
+        createNode(),
+        [createInput(QUERY)],
+        controller.signal,
+      );
+
+      expect(result).toEqual({
+        status: "failed",
+        error: "Web Search request was cancelled",
+      });
+      expect(consoleError).not.toHaveBeenCalled();
+    });
   });
 });

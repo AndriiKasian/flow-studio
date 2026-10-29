@@ -1,5 +1,9 @@
 import type { WorkflowGraph } from "@flow-studio/shared";
 
+import {
+  logFailure,
+  logProviderError,
+} from "../../lib/error-diagnostics";
 import type { NodeInput } from "../collect-node-inputs";
 import type { NodeExecutionResult } from "../types";
 
@@ -48,6 +52,10 @@ export async function executeWebSearch(
   const apiKey = process.env.SERPER_API_KEY;
 
   if (!apiKey) {
+    logFailure("Web Search provider is not configured", {
+      missingVariables: ["SERPER_API_KEY"],
+    });
+
     return {
       status: "failed",
       error: "Web Search provider is not configured",
@@ -82,6 +90,10 @@ export async function executeWebSearch(
     });
 
     if (!response.ok) {
+      logFailure("Web Search request failed", {
+        status: response.status,
+      });
+
       return {
         status: "failed",
         error: "Web Search request failed",
@@ -96,6 +108,8 @@ export async function executeWebSearch(
       !("organic" in data) ||
       !Array.isArray(data.organic)
     ) {
+      logFailure("Web Search returned an invalid response", {});
+
       return {
         status: "failed",
         error: "Web Search returned an invalid response",
@@ -142,12 +156,19 @@ export async function executeWebSearch(
         results: JSON.stringify(results),
       },
     };
-  } catch {
+  } catch (error) {
+    if (requestSignal.aborted && signal?.aborted) {
+      return {
+        status: "failed",
+        error: "Web Search request was cancelled",
+      };
+    }
+
+    logProviderError("Web Search request failed", error);
+
     return {
       status: "failed",
-      error: requestSignal.aborted && signal?.aborted
-        ? "Web Search request was cancelled"
-        : "Web Search request failed",
+      error: "Web Search request failed",
     };
   }
 }
